@@ -10,9 +10,10 @@ struct tCompart {
 double Prof2Press (double Profondeur);
 double fppalier   (double ta,double scm);
 double fdpalier   (double Profondeur,double ta,double scm,int periode);
-double Ti2Tf      (double ta,int Profondeur,int Temps,int Periode);
+double Ti2Tf      (double ta,double Profondeur,double Temps,int Periode);
+const char *Groupe(double AzoteC120);
 
-void   Decomp     (int prof, int temps,int Verbose);
+void   Decomp     (double ProfReelle, double temps,int Verbose, int vDesc, int vMontA,int vMontP,double pAzote);
 
 
 #endif // DECOMP_H_INCLUDED

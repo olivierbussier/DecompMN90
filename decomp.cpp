@@ -4,17 +4,17 @@
 ' (c) Axel CHAMBILY-CASADESUS '
 ' variables globales '
 ' i : compteur de boucle
-' j : compteur de paliers ( j=1 : prof max plongÃ©e )
+' j : compteur de paliers ( j=0 : prof max plongÃ©e )
 ' prof : profondeur maximale atteinte
 ' temps : temps de plongÃ©e
 ' periode(i) : pÃ©riode du tissu i : constantes
 ' sursatcrit(i) : seuil de sursaturation critique du tissu i : constantes
-' sc(i,j) : coefficient de sursaturation du tissu i en fin de
-niveau j
-' tn2(i,j) : tension d'azote du tissu i en fin de niveau j
+' sc [i][j] : coefficient de sursaturation du tissu i en fin de niveau j
+' tn2[i][j] : tension d'azote du tissu i en fin de niveau j
 ' ppalier(i) : profondeur 1er palier pour le tissu i
 ' dpalier(i,j) : durÃ©e palier j pour le tissu i
-' dpal(i) : copie tableau dpalier pour tri ' dpal : durÃ©e palier tissu directeur
+' dpal(i) : copie tableau dpalier pour tri
+' dpal : durÃ©e palier tissu directeur
 ' index%(i) : index de tri du tableau ppalier()
 ' ppN2s : ppN2 en surface : constante=0.8 ( modifiable en altitude )
 ' pmoy : profondeur moyenne pour 1er palier thÃ©orique
@@ -36,15 +36,16 @@ niveau j
 #define TEST
 
 #ifdef TEST
-int    periode   []={7    , 30   , 60   , 120 };
-double sursatcrit[]={2.56 , 1.84 , 1.6  , 1.6 };
+int    periode   []={7    , 30   , 60   , 120 }; // période du tissu i : constantes
+double sursatcrit[]={2.56 , 1.84 , 1.6  , 1.6 }; // seuil de sursaturation critique du tissu i : constantes
 #else
 int    periode   []={5    , 7    , 10   , 15   , 20   , 30   , 40   , 50   , 60   , 80   , 100  , 120  };
 double sursatcrit[]={2.72 , 2.54 , 2.38 , 2.20 , 2.04 , 1.82 , 1.68 , 1.61 , 1.58 , 1.56 , 1.55 , 1.54 };
 #endif // TEST
 
 #define nbcompart (sizeof(periode)/sizeof(periode[0]))
-
+#define nbpaliers 15
+#define VIT_REMONT 17
 
 tCompart Compartiment[] = {
   {  "C5",   5, 2.72},
@@ -60,19 +61,6 @@ tCompart Compartiment[] = {
   {"C100", 100, 1.55},
   {"C120", 120, 1.54}
 };
-
-// Constantes
-double ppN2s=0.8;
-
-double sc     [nbcompart][10];
-double tn2    [nbcompart][10];
-double dpalier[nbcompart][10];
-double ppalier[nbcompart];
-double dpal   [nbcompart];
-double pt;
-double pmoy;
-double ddpal;
-
 
 /*******************************************************************************************/
 double Prof2Press(double Profondeur)
@@ -99,7 +87,7 @@ double fdpalier(double Profondeur,double ta,double scm,int period)
 }
 
 /*******************************************************************************************/
-double Ti2Tf(double Ti,int Profondeur,int Temps,int Periode)
+double Ti2Tf(double Ti,double Profondeur,double Temps,int Periode)
 /*******************************************************************************************/
 {
   // Calcul  de la nouvelle tension d'un tissus de période P de tension Ti
@@ -111,130 +99,228 @@ double Ti2Tf(double Ti,int Profondeur,int Temps,int Periode)
   return Ti + ( Tf - Ti) * (1 - pow(0.5,((double)Temps) / (double)Periode));
 }
 
-#define VERBOSE if (Verbose)
+struct tGroup {
+  const double MaxValAzote;
+  const char *GroupName;
+};
+tGroup Group[] = {
+  {1.56,"**" },
+  {1.51,"P" },
+  {1.47,"O" },
+  {1.42,"N" },
+  {1.38,"M" },
+  {1.33,"L" },
+  {1.29,"K" },
+  {1.24,"J" },
+  {1.20,"I" },
+  {1.16,"H" },
+  {1.11,"G" },
+  {1.07,"F" },
+  {1.02,"E" },
+  {0.98,"D" },
+  {0.93,"C" },
+  {0.89,"B" },
+  {0.84,"A" }
+};
+#define NBGROUPS (sizeof(Group)/sizeof(Group[0]))
 
 /*******************************************************************************************/
-void Decomp (int prof, int temps,int Verbose)
+const char *Groupe(double AzoteC120)
 /*******************************************************************************************/
 {
-  int i,j,Tdir;
-  double tmax,ppal;
-  prof = prof * (0.8 / ppN2s); // profondeur fictive
+  unsigned int i;
 
-// Init
+  for (i=0;i<NBGROUPS;i++) {
+    if (AzoteC120>=Group[i].MaxValAzote)
+      return Group[i].GroupName;
+  }
+  Fatal(99,"Groupe erreur");
+  return NULL;
+}
 
-  j=0;
+/*******************************************************************************************/
+void Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,int vMontP,double pAzote)
+/*******************************************************************************************/
+{
+  // Constantes
+  //double ppN2s=0.80;
+  double ppN2s=pAzote;
+  double temps = Temps;
+  int i,Palier=0,tDir1,tDir2;
+  double tmax,pPal1,pPal2;
+  double pt1,pt2;                            // Initialisée avec la profoncdeur du plus profond palier
+  double pmoy;                               // Initialisée avec le calcul de la profondeur moyenne
+  int PalierNum=1;
+  //double sc      [nbcompart][nbpaliers];   // coefficient de sursaturation du compartiment i en fin de niveau j
+  double tn2     [nbcompart][nbpaliers];     // Tension d'azote du tissu i en fin de niveau j
+  double dpalier [nbcompart][nbpaliers];     // Durée du palier J pour le compartiment i
+  double ppalier1[nbcompart];                // Profondeur 1er palier pour le compartiment i avant remontée
+  double ppalier2[nbcompart];                // Profondeur 1er palier pour le compartiment i au 1er palier téorique
+  int    DureePaliers=0;                     // Durée totale des paliers
+  double ProfFict = ProfReelle*(0.79/ppN2s);  // profondeur fictive (prof equivalent Azone et altitude
+  double DureeDescente=ProfFict/vDesc;
+
+  // Calcul des éléments de saturation pour la descente
 
   for (i=0;i<(int)nbcompart;i++) {
-    tn2[i][j] = Ti2Tf(0.8,prof,temps,periode[i]);
-    VERBOSE printf ("On a TN2=%4.2f pour le tissu %i'\n",tn2[i][j],periode[i]);
+    // Calcul de la tN2 finale de tous les compartiments
+    // Après exposition a la profondeur 'prof' durant le temps 'temps'
+    tn2[i][Palier]  = Ti2Tf(0.8,ProfFict - 20,DureeDescente,periode[i]);
   }
-  VERBOSE printf ("\n");
+  temps -= DureeDescente;
 
+  tDir1=-1;
+  pPal1=-100;
   for (i=0;i<(int)nbcompart;i++) {
-    ppalier[i] = fppalier(tn2[i][j],sursatcrit[i]);
-    VERBOSE {
-    if (ppalier[i] > 0) {
-      printf ("Le tissu %3.0i' impose un palier a %4.2f\n",periode[i],ppalier[i]*ppN2s/0.8);
-	} else {
-      printf ("Le tissu %3.0i' n'impose pas de palier\n",periode[i]);
-    }
+    // Calcul de la tN2 finale de tous les compartiments
+    // Après exposition a la profondeur 'prof' durant le temps 'temps'
+    tn2[i][Palier]  = Ti2Tf(tn2[i][Palier],ProfFict,temps,periode[i]);
+//    tn2[i][Palier]  = Ti2Tf(0.8,ProfFict,temps,periode[i]);
+    // Ainsi que la profondeur minimum du palier pour chaque compartiment
+    // Après l'exposition ci-dessus
+    ppalier1[i] = fppalier(tn2[i][Palier],sursatcrit[i]);
+    // Recherche du compartiment directeur
+    if (ppalier1[i]>pPal1) {
+      pPal1=ppalier1[i];
+      tDir1=i;
     }
   }
-  VERBOSE printf ("\n");
+  if (tDir1==-1) Fatal(2,"Erreur recherche compartiment directeur");
 
-  // Recherche du tissu directeur
+  // Calcul du palier le plus profond
+  pt1 = ((int)(pPal1 / 3) + 1) * 3;
 
-  Tdir=-1;
-  ppal=-1;
+  // Calcul de la profondeur moyenne
+  pmoy = ProfFict - pt1 - 10;
+
+  // ------------------------------------------------
+  // Calcul de la désaturation durant la remontée
+  // et jusque à l'arrivée au 1er palier théorique
+  // Prise en compte de la vitesse de remontée de 15 à 17m/mn (vMontA)
+
+  tDir2=-1;
+  pPal2=-100;
   for (i=0;i<(int)nbcompart;i++) {
-    if (ppalier[i]>ppal) {
-      ppal=ppalier[i];
-      Tdir=i;
+    // double Ti2Tf         (Ti,       Profondeur, Temps, Periode)
+    tn2[i][Palier+1] = Ti2Tf(tn2[i][Palier],pmoy,((double)ProfReelle - (double)pt1) / (double)vMontA,periode[i]);
+    //sc [i][Palier+1] = tn2[i][Palier+1] / (1 + (pt1 - 3) / 10);
+    ppalier2[i] = fppalier(tn2[i][Palier+1],sursatcrit[i]);
+    if (ppalier2[i]>pPal2) {
+      pPal2=ppalier2[i];
+      tDir2=i;
     }
   }
-  if (Tdir==-1) Fatal(2,"Erreur recherche compartiment directeur");
+  if (tDir2==-1) Fatal(2,"Erreur recherche compartiment directeur 2");
 
-  if (ppal <= 0) {
-    printf("On peut remonter sans palier.\n");
-	return;
+  // Calcul du palier le plus profond
+  pt2 = ((int)(pPal2 / 3) + 1) * 3;
+
+  // ------------------------------------------------
+  // Affichage des données de saturation juste avant
+  // de décider de remonter au 1er palier
+
+  VERBOSE ("+-----------------------------------------------------------------------------+\n");
+  VERBOSE ("| Parametres de la plongée : Profondeur = %3.0f metres, Temps = %3.0f minutes     |\n",ProfReelle,Temps);
+  else {
+    printf ("+---------------------------------+\n");
+    printf ("| P = %3.0fm, T = %3.0fmn             |\n",ProfReelle,Temps);
+    printf ("+ - - - - - - - - - - - - - - - - +\n");
   }
-
-  VERBOSE printf("Le tissu %i' est donc le tissu directeur\n",periode[Tdir]);
-
-  //ppal = ceil(ppal); //if ((int)(ppal / 3) == ppal / 3)    pt = ppal;  else
-  pt = ((int)(ppal / 3) + 1) * 3;
-
-  VERBOSE printf ("Il faudrait un palier théorique à %4.2fm\n\n",pt*ppN2s/0.8);
-
-  pmoy = prof - pt - 10;
-  j++;
-
-  for (i=0;i<(int)nbcompart;i++)
-    tn2[i][j] = Ti2Tf(tn2[i][j - 1],pmoy,(prof - pt) / 17,periode[i]);
-
-  sc[Tdir][j] = tn2[Tdir][j] / (1 + (pt - 3) / 10);
-
-  if (sc[Tdir][j] < sursatcrit[Tdir]) {
-    VERBOSE {
-    printf ("Pour le tissu directeur C%i, sc = %f à %f m\n",periode[Tdir],sc[Tdir][j],(pt - 3)*ppN2s/0.8);
-	printf ("Comme sc<%f le palier théorique a %f est inutile\n",sursatcrit[Tdir],pt*ppN2s/0.8);
-    printf ("et on peut donc remonter directement à %f m\n",(pt - 3)*ppN2s/0.8);
-    }
-    pt = pt - 3;
-  } else {
-    VERBOSE {
-    printf("Pour le tissu directeur %i', sc = %4.2f à %4.2fm\n",periode[Tdir],sc[Tdir][j],(pt - 3)*ppN2s/0.8);
-    printf("Comme sc>=%f, il faut réellement effectuer un palier à %f m\n",sursatcrit[Tdir],pt*ppN2s/0.8);
-    }
-  }
-  VERBOSE printf ("\n\n");
-
-// REPEAT
-// UNTIL INKEY$ <> "" CLS
-
-  while(pt > 0) {
-    VERBOSE printf ("--------------------------------Palier à %2.2f m ----------------------------\n",pt);
-    j++;
-    for (i=0;i<(int)nbcompart;i++) {
-      if (tn2[i][j - 1] / (1 + (pt - 3) / 10) >= sursatcrit[i]) {
-        dpalier[i][j] = fdpalier(pt,tn2[i][j - 1],sursatcrit[i],periode[i]);
-        VERBOSE printf ("Le tissu %3.0i' (sc=%4.2f/T=%4.2f) -> palier a %3.0fm : %3.2fmn\n",periode[i],sursatcrit[i],tn2[i][j-1],pt*ppN2s/0.8,dpalier[i][j]);
-      } else {
-        VERBOSE printf ("Le tissu %3.0i' (sc=%4.2f/T=%4.2f) -> palier a %3.0fm : N.A\n"    ,periode[i],sursatcrit[i],tn2[i][j-1],pt*ppN2s/0.8);
-      }
-    }
-    // Recherche du tissu directeur
-    tmax=0;
-    Tdir=-1;
-    for (i=0;i<(int)nbcompart;i++) {
-      if (dpalier[i][j]>tmax) {
-        tmax = dpalier[i][j];
-        Tdir=i;
-      }
-    }
-    if (Tdir==-1) Fatal(3,"Erreur recherche compartiment directeur");
-
-    tmax=ceil(tmax);
-    VERBOSE printf("Le tissu directeur est le tissu %i'\n",periode[Tdir]);
-    VERBOSE {
-    printf("Il faut donc effectuer un palier de %4.1f minutes a %4.1f mètres\n\n",tmax,pt*ppN2s/0.8);
+  VERBOSE ("+-----------------------------------------------------------------------------+\n");
+  VERBOSE ("| Informations de saturation juste avant le debut de remontee                 |\n");
+  VERBOSE ("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +\n");
+  for (i=0;i<(int)nbcompart;i++) {
+    if (tn2[i][Palier]>sursatcrit[i]) {
+      VERBOSE ("| C%3.0i' | TN2 = %4.2f | Coeff Surs. Critique = %4.2f | plafond = %5.2f          |\n",periode[i],tn2[i][Palier],sursatcrit[i],ppalier1[i]*ppN2s/0.8);
     } else {
-    printf("Palier %4.1fm : %#5.2fmm\n",pt*ppN2s/0.8,tmax);
+      VERBOSE ("| C%3.0i' | TN2 = %4.2f | Coeff Surs. Critique = %4.2f | plafond =  N.A           |\n",periode[i],tn2[i][Palier],sursatcrit[i]);
     }
+  }
+  VERBOSE ("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +\n");
+  if (pPal1>0) {
+    VERBOSE ("| Compartiment directeur %3.0i'-> Palier a %4.2fm, soit %5.2fm converti MN90     |\n",periode[tDir1],pPal1,pt1);
+  } else {
+    VERBOSE ("| Pas de palier a effectuer                                                   |\n");
+  }
+  VERBOSE ("+-----------------------------------------------------------------------------+\n");
+  VERBOSE ("| Informations de saturation juste avant le palier theorique                  |\n");
+  VERBOSE ("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +\n");
+  for (i=0;i<(int)nbcompart;i++) {
+    if (tn2[i][Palier+1]>sursatcrit[i]) {
+      VERBOSE ("| C%3.0i' | TN2 = %4.2f | Coeff Surs. Critique = %4.2f | plafond = %5.2f          |\n",periode[i],tn2[i][Palier+1],sursatcrit[i],ppalier2[i]*ppN2s/0.8);
+    } else {
+      VERBOSE ("| C%3.0i' | TN2 = %4.2f | Coeff Surs. Critique = %4.2f | plafond =  N.A           |\n",periode[i],tn2[i][Palier+1],sursatcrit[i]);
+    }
+  }
+  VERBOSE ("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +\n");
+  if (pPal2>0) {
+    VERBOSE ("| Compartiment directeur %3.0i'-> Palier a %4.2fm, soit %5.2fm converti MN90     |\n",periode[tDir2],pPal2,pt2);
+  } else {
+    VERBOSE ("| Pas de palier a effectuer                                                   |\n");
+    pt2=0;
+  }
+  VERBOSE ("+-----------------------------------------------------------------------------+\n");
+
+   //Palier++;
+  while(pt2 > 0) {
+    Palier++;
+    VERBOSE ("+-----------------------------------------------------------------------------+\n");
+    VERBOSE ("| %2i - Palier a %4.1fm                                                         |\n",PalierNum++,pt2);
+    VERBOSE ("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +\n");
+    tmax=0;
+    tDir2=-1;
+    for (i=0;i<(int)nbcompart;i++) {
+      if (tn2[i][Palier] / (1 + (pt2 - 3) / 10) >= sursatcrit[i]) {
+        dpalier[i][Palier+1] = fdpalier(pt2,tn2[i][Palier],sursatcrit[i],periode[i]);
+        VERBOSE ("| C%3.0i' | Coeff Surs. Critique = %4.2f | T=%4.2f | -> palier a %2.0fm : %5.1fmn    |\n",periode[i],sursatcrit[i],tn2[i][Palier],pt2*ppN2s/0.8,dpalier[i][Palier+1]);
+      } else {
+        dpalier[i][Palier+1] = 0;
+        VERBOSE ("| C%3.0i' | Coeff Surs. Critique = %4.2f | T=%4.2f | -> palier a %2.0fm :     N.A    |\n"    ,periode[i],sursatcrit[i],tn2[i][Palier],pt2*ppN2s/0.8);
+      }
+      if (dpalier[i][Palier+1]>tmax) {
+        tmax = dpalier[i][Palier+1];
+        tDir2=i;
+      }
+    }
+    if (tDir2==-1) Fatal(3,"Erreur recherche compartiment directeur");
+    VERBOSE ("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +\n");
+
+    DureePaliers+=ceil(tmax);
+    // Recherche du tissu directeur
+    VERBOSE ("| Compartiment directeur : %3.0i'-> Palier de %6.2fmn, arrondi a %3.0fmn         |\n",periode[tDir2],tmax,ceil(tmax));
+    else {
+      printf ("| Palier %4.1fm : Duree de %5.1fmn |\n",pt2,ceil(tmax));
+    }
+    VERBOSE ("+-----------------------------------------------------------------------------+\n");
 
     // PRINT "Appuyer sur une touche pour continuer."
 
-    for (i=0;i<(int)nbcompart;i++)
-      tn2[i][j] = Ti2Tf(tn2[i][j - 1],pt,tmax,periode[i]);
-    pt = pt - 3;
+    for (i=0;i<(int)nbcompart;i++) {
+      tn2[i][Palier+1] = Ti2Tf(tn2[i][Palier],pt2,tmax,periode[i]);
+      //sc [i][Palier+1] = tn2[i][Palier+1] / (1 + (pt2 - 3) / 10);
+    }
+    pt2 = pt2 - 3; // Palier suivant
   }
 
-  VERBOSE {
-  printf("Le plongeur est sorti avec un coefficient C égal à : %f\n",tn2[nbcompart-1][j] / 0.8);
+  double DureeTotale   = DureePaliers+ceil((double)ProfReelle/(double)VIT_REMONT);
+  double DureeRemontee = (double)ProfReelle/(double)VIT_REMONT;
+  VERBOSE ("+-----------------------------------------------------------------------------+\n");
+  VERBOSE ("| Le plongeur est sorti avec un coefficient C egal a %4.2f                     |\n",tn2[nbcompart-1][Palier] / 0.8);
+  VERBOSE ("| Azote residuel C120 = %4.2f. GPS = %3s                                       |\n",tn2[nbcompart-1][Palier],Groupe(tn2[nbcompart-1][Palier]));
+  if (PalierNum>1) {
+    VERBOSE ("| Duree totale de remontee : %2i Palier %3imn, Remontee %3.1fmn, arrondi %5.1fmn |\n",PalierNum-1,DureePaliers,DureeRemontee,ceil(DureeTotale));
   } else {
-  printf("C=%f\n",tn2[nbcompart-1][j] / 0.8);
+    VERBOSE ("| Duree totale de remontee : Pas de paliers, Remontee %3.1fmn, arrondi %5.1fmn  |\n",DureeRemontee,ceil(DureeTotale));
   }
+  VERBOSE ("+-----------------------------------------------------------------------------+\n");
+  else {
+    printf ("+ - - - - - - - - - - - - - - - - +\n");
+    printf ("| C   = %6.2f                    |\n",tn2[nbcompart-1][Palier] / 0.8);
+    printf ("| Azote residuel = %4.2f. GPS = %2s |\n",tn2[nbcompart-1][Palier],Groupe(tn2[nbcompart-1][Palier]));
+    printf ("| DTR = %5.1fmn                   |\n",ceil(DureeTotale));
+    printf ("+---------------------------------+\n");
+  }
+
 }
 // INPUT "Profondeur de la prochaine plongÃ©e ";prof
 // prof = prof * (0.8 / ppN2s) // profondeur fictive
