@@ -33,7 +33,7 @@ niveau j
 #include "util.h"
 #include "decomp.h"
 
-//#define TEST
+#define TEST
 
 #ifdef TEST
 int    periode   []={7    , 30   , 60   , 120 };
