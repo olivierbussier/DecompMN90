@@ -1,0 +1,151 @@
+WINSCUBF.LST 1 / 3
+' PROGRAMME BASIC CALCULANT LES PALIERS POUR UN TEMPS ET UNE
+' PROFONDEUR DONNES (vitesse de remontée = 17 m/mn) '
+' (c) Axel CHAMBILY-CASADESUS '
+' variables globales '
+' i : compteur de boucle
+' j : compteur de paliers ( j=1 : prof max plongée )
+' prof : profondeur maximale atteinte
+' temps : temps de plongée
+' t(i) : période du tissu i : constantes
+' scm(i) : seuil de sursaturation critique du tissu i : constantes
+' sc(i,j) : coefficient de sursaturation du tissu i en fin de
+niveau j
+' tn2(i,j) : tension d'azote du tissu i en fin de niveau j
+' ppalier(i) : profondeur 1er palier pour le tissu i
+' dpalier(i,j) : durée palier j pour le tissu i
+' dpal(i) : copie tableau dpalier pour tri ' dpal : durée palier tissu directeur
+' index%(i) : index de tri du tableau ppalier()
+' t0 : ppN2 en surface : constante=0.8 ( modifiable en altitude )
+' pmoy : profondeur moyenne pour 1er palier théorique
+' pt : 1er palier théorique puis paliers successifs tous les 3m '
+' variables locales '
+' p : profondeur dans la fonction tf qui calcule PPN2
+' t : temps dans la fonction tn2 qui calcule TN2
+' periode : dans la fonction tn2
+' ta : tension TN2 à l'état précédent
+' scm : variable pour passer scm(i)
+'
+-----------------------------------------------------------------------------
+DIM t(4),scm(4),sc(4,10),tn2(4,10),ppalier(4),dpalier(4,10),dpal(4),index%(4)
+FOR i = 1 TO 4
+ index%(i) = i
+NEXT i
+j = 1
+t0 = 0.8
+t(1) = 7
+t(2) = 30
+t(3) = 60
+t(4) = 120
+scm(1) = 2.56
+scm(2) = 1.84
+scm(3) = 1.6
+scm(4) = 1.6
+CLS
+INPUT "Profondeur maximale atteinte ( en m. ) ";prof
+prof = prof * (0.8 / t0) // profondeur fictive
+INPUT "Temps de plongée ( en mn ) ";temps
+PRINT
+FOR i = 1 TO 4
+ tn2(i,j) = FN tn2(0.8,prof,temps,t(i))
+ PRINT "On a TN2= ";ROUND(tn2(i,j),2);" pour le tissu ";t(i);"'"
+NEXT i
+
+FOR i = 1 TO 4
+ ppalier(i) = FN ppalier(tn2(i,j),scm(i))
+ IF ppalier(i) > 0
+  PRINT "Le tissu ";t(i);"' impose un palier à ";ROUND(ppalier(i)*t0/0.8,1);" m"
+ ELSE
+  PRINT "Le tissu ";t(i);"' n'impose pas de palier."
+ ENDIF
+NEXT i
+
+PRINT
+QSORT ppalier(-),4,index%()
+IF ppalier(1) <= 0
+ PRINT "On peut remonter sans palier."
+ PRINT
+ GOTO plop
+ENDIF
+
+PRINT "Le tissu ";t(index%(1));"' est donc le tissu directeur."
+IF INT(ppalier(1) / 3) = ppalier(1) / 3
+ pt = ppalier(1)
+ELSE
+ pt = (INT(ppalier(1) / 3) + 1) * 3
+ENDIF
+PRINT "Il faudrait un palier théorique à ";ROUND(pt*t0/0.8,1);"m."
+PRINT
+pmoy = prof - pt - 10
+INC j
+FOR i = 1 TO 4
+ tn2(i,j) = FN tn2(tn2(i,j - 1),pmoy,(prof - pt) / 17,t(i))
+NEXT i
+i = index%(1)
+sc(i,j) = tn2(i,j) / (1 + (pt - 3) / 10)
+IF sc(i,j) < scm(i)
+ PRINT "Pour le tissu directeur ";t(i);"' , sc = ";ROUND(sc(i,j),2);" à ";ROUND((pt - 3)*t0/0.8,1);" m."
+ PRINT "Comme sc<";scm(i);" le palier théorique à ";ROUND(pt*t0/0.8,1);" m est inutile"
+ PRINT "et on peut donc remonter directement à ";ROUND((pt - 3)*t0/0.8,1);" m."
+ pt = pt - 3
+ELSE
+ PRINT "Pour le tissu directeur ";t(i);"' , sc = ";ROUND(sc(i,j),2);" à ";ROUND((pt - 3)*t0/0.8,1);" m."
+ PRINT "Comme sc>=";scm(i);" il faut réellement effectuer un palier à ";ROUND(pt*t0/0.8,1);" m."
+ENDIF
+PRINT
+PRINT
+PRINT "Appuyer sur une touche pour continuer."
+REPEAT
+UNTIL INKEY$ <> "" CLS
+WHILE pt > 0
+ INC j
+ FOR i = 1 TO 4
+ IF tn2(i,j - 1) / (1 + (pt - 3) / 10) >= scm(i)
+   dpalier(i,j) = FN dpalier(pt,tn2(i,j - 1),scm(i),t(i))
+   PRINT "Le tissu ";t(i);"' impose un palier de ";ROUND(dpalier(i,j),1);" mn à ";ROUND(pt*t0/0.8,1);" m."WINSCUBF.LST 3 / 3
+ ELSE
+  PRINT "Le tissu ";t(i);"' n'impose pas de palier à ";ROUND(pt*t0/0.8,1);" m."
+ ENDIF
+ NEXT i
+ PRINT
+ FOR i = 1 TO 4
+ index%(i) = i
+ dpal(i) = dpalier(i,j)
+ NEXT i
+ QSORT dpal(-),4,index%()
+ IF INT(dpal(1)) <> dpal(1)
+   dpal = INT(dpal(1)) + 1
+ ELSE
+   dpal = dpal(1)
+ ENDIF
+ PRINT "Le tissu directeur est le tissu ";t(index%(1));"'"
+ PRINT "Il faut donc effectuer un PALIER DE ";dpal;" MINUTES A";ROUND(pt*t0/0.8,1);" METRES."
+ PRINT
+ PRINT
+ PRINT "Appuyer sur une touche pour continuer."
+ REPEAT
+ UNTIL INKEY$ <> ""
+ CLS
+ FOR i = 1 TO 4
+  tn2(i,j) = FN tn2(tn2(i,j - 1),pt,dpal,t(i))
+ NEXT i
+ pt = pt - 3
+WEND
+CLS
+plop:
+PRINT "Le plongeur est sorti avec un coefficient C égal à :";ROUND(tn2(4,j) / 0.8,2)
+PRINT
+INPUT "Profondeur de la prochaine plongée ";prof
+prof = prof * (0.8 / t0) // profondeur fictive
+INPUT "Intervalle ( en minutes ) ";inter
+PRINT
+tfs = FN tn2(tn2(4,j),0,inter,120)
+majo = ROUND((LOG((FN tf(prof) - 0.8) / (FN tf(prof) - tfs)) / LOG
+(2)) * 120,2)
+PRINT "La majoration sera égale à ";majo;" mn."
+'
+-----------------------------------------------------------------------------
+DEFFN tf(p) = ((p / 10) + 1) * 0.8
+DEFFN tn2(ta,p,t,periode) = ta + (FN tf(p) - ta) * (1 - (0.5) ^(t / periode))
+DEFFN ppalier(ta,scm) = ((ta / scm) - 1) * 10
+DEFFN dpalier(p,ta,scm,periode) = (LOG((FN tf(p) - ta) / (FN tf(p) - (((p - 3) / 10) + 1) * scm)) / LOG(2)) * periode
