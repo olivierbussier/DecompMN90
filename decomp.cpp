@@ -44,8 +44,9 @@ double sursatcrit[]={2.72 , 2.54 , 2.38 , 2.20 , 2.04 , 1.82 , 1.68 , 1.61 , 1.5
 #endif // TEST
 
 #define nbcompart (sizeof(periode)/sizeof(periode[0]))
-#define nbpaliers 15
+#define nbpaliers 5
 #define VIT_REMONT 17
+#define AzotSurf 0.79
 
 tCompart Compartiment[] = {
   {  "C5",   5, 2.72},
@@ -62,28 +63,30 @@ tCompart Compartiment[] = {
   {"C120", 120, 1.54}
 };
 
+int Prof2Palier(double ProfActuelle);
+
 /*******************************************************************************************/
 double Prof2Press(double Profondeur)
 /*******************************************************************************************/
 {
-  return ((Profondeur / 10) + 1) * 0.8;
+  return ((Profondeur / 10) + 1) ;//* AzotSurf;
 }
 
 /*******************************************************************************************/
-double fppalier(double ta,double scm)
+double fppalier(double tN2,double scm)
 /*******************************************************************************************/
 {
-  return ((ta / scm) - 1) * 10;
+  return ((tN2 / scm) - 1) * 10;
 }
 
 /*******************************************************************************************/
-double fdpalier(double Profondeur,double ta,double scm,int period)
+double fdpalier(double Profondeur,double tN2,double scm,int period)
 /*******************************************************************************************/
 {
   //DEFFN dpalier(p,ta,scm,periode)
   //      LOG((tf(p) - ta) / (tf(p) - (((p          - 3) / 10) + 1) * scm)) / LOG(2)) * periode
   double Press = Prof2Press(Profondeur);
-  return (log((Press - ta) / (Press - (((Profondeur - 3) / 10) + 1) * scm)) / log(2)) * period;
+  return (log((Press - tN2) / (Press - (((Profondeur /* - 3 */) / 10) + 1) * scm)) / log(2)) * period;
 }
 
 /*******************************************************************************************/
@@ -97,6 +100,29 @@ double Ti2Tf(double Ti,double Profondeur,double Temps,int Periode)
 
   double Tf = Prof2Press(Profondeur);
   return Ti + ( Tf - Ti) * (1 - pow(0.5,((double)Temps) / (double)Periode));
+}
+double Ti2TfIntegr(double Ti,double ProfondeurDebut,double ProfondeurFin,double Temps,int Periode);
+
+/*******************************************************************************************/
+double Ti2TfIntegr(double Ti,double ProfondeurDebut,double ProfondeurFin,double Temps,int Periode)
+/*******************************************************************************************/
+{
+  // Calcul  de la nouvelle tension d'un tissus de période P de tension Ti
+  // soumis a une tension variable linéaire pendant une durée T
+  // ------------------------------------------------------------------------
+  // T = Ti + (Tf-Ti)*(1-0,5^^(T/P))
+#define NBINTERV 100
+  double DeltaT=Temps/NBINTERV;
+  int i;
+
+  double TfD = Prof2Press(ProfondeurDebut);
+  double TfF = Prof2Press(ProfondeurFin);
+  double DeltaTf=(TfF-TfD)/NBINTERV;
+
+  for (i=1;i<=NBINTERV;i++) {
+    Ti += ((TfD + i*DeltaTf) - Ti) * (1 - pow(0.5,((double)DeltaT) / (double)Periode));
+  }
+  return Ti;
 }
 
 struct tGroup {
@@ -139,42 +165,234 @@ const char *Groupe(double AzoteC120)
 }
 
 /*******************************************************************************************/
+int Prof2Palier(double ProfActuelle)
+/*******************************************************************************************/
+{
+  // Calcul de la profondeur du palier type MN90 (multiple de 3m)
+  // Entre ProfActuelle et la surface, et le plus près de ProfActuelle
+
+  for (int i=ProfActuelle/3;i<30;i+=3)
+    if (ProfActuelle<=i)
+      return i;
+}
+
+typedef struct {
+  double sc      [nbcompart];     // Sursat du compartiment
+  double tn2     [nbcompart];     // Tension d'azote du tissu i en fin de niveau j
+  double dpalier [nbcompart];     // Durée du palier J pour le compartiment i
+  double ppalier [nbcompart];     // Profondeur 1er palier pour le compartiment i avant remontée
+} tCaract;
+
+double CalcSaturation(double ProfDepart,double ProfArrivee,double Temps, tCaract *Caract);
+
+/*******************************************************************************************/
+double CalcSaturation(double ProfDepart,double ProfArrivee,double Temps, tCaract *Caract)
+/*******************************************************************************************/
+{
+  double Vitesse = (ProfArrivee-ProfDepart)/Temps;
+  double ProfActuelle = ProfDepart, profpalier;
+  double Duree = Temps;
+  double PalierDetect=0;
+  int    i,pMN90;
+  double dMN90;
+  bool   fPalier;
+  double PasT  = 1.0/60;
+  double PasV  = ((ProfArrivee-ProfDepart)/Temps)*PasT;
+
+  while (Duree>0) {
+    PalierDetect=0; fPalier=false; // *Caract
+    for (i=0;i<(int)nbcompart;i++) {
+      // Calcul de la tN2 finale de tous les compartiments après le Pas
+      Caract->tn2[i] = Ti2TfIntegr(Caract->tn2[i],ProfActuelle,ProfActuelle+PasV,PasT,periode[i]);
+      //Caract->sc [i] = Caract->tn2[i] / (1 + (ProfActuelle/10));
+      Caract->sc [i] = Caract->tn2[i] / (1 + (ProfActuelle/10));
+      // Ainsi que la profondeur minimum théorique du palier pour chaque compartiment
+      profpalier = ((Caract->tn2[i]/sursatcrit[i])-1)*10;
+      if (profpalier>0) {
+        fPalier=true;
+        if (PalierDetect<profpalier)
+          PalierDetect=profpalier;
+        Caract->ppalier[i] = profpalier;
+      } else {
+        Caract->ppalier[i] = 0;
+      }
+    }
+    Duree-=PasT;
+    ProfActuelle += PasV;
+  }
+  // Calcul de la durée du palier théorique
+  if (fPalier)
+    pMN90 = Prof2Palier(PalierDetect);
+  else
+    pMN90=0;
+  for (i=0;i<(int)nbcompart;i++) {
+    dMN90 = fdpalier(pMN90,Caract->tn2[i],sursatcrit[i],periode[i]);
+    if (dMN90>0)
+      Caract->dpalier[i]=dMN90;
+  }
+  return pMN90;
+}
+
+/*******************************************************************************************/
 void Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,int vMontP,double pAzote)
 /*******************************************************************************************/
 {
-  // Constantes
-  //double ppN2s=0.80;
   double ppN2s=pAzote;
-  double temps = Temps;
-  int i,Palier=0,tDir1,tDir2;
-  double tmax,pPal1,pPal2;
-  double pt1,pt2;                            // Initialisée avec la profoncdeur du plus profond palier
-  double pmoy;                               // Initialisée avec le calcul de la profondeur moyenne
-  int PalierNum=1;
-  //double sc      [nbcompart][nbpaliers];   // coefficient de sursaturation du compartiment i en fin de niveau j
-  double tn2     [nbcompart][nbpaliers];     // Tension d'azote du tissu i en fin de niveau j
-  double dpalier [nbcompart][nbpaliers];     // Durée du palier J pour le compartiment i
-  double ppalier1[nbcompart];                // Profondeur 1er palier pour le compartiment i avant remontée
-  double ppalier2[nbcompart];                // Profondeur 1er palier pour le compartiment i au 1er palier téorique
-  int    DureePaliers=0;                     // Durée totale des paliers
-  double ProfFict = ProfReelle*(0.79/ppN2s);  // profondeur fictive (prof equivalent Azone et altitude
+  int i;
+  double ProfFict = ProfReelle*(AzotSurf/ppN2s); // profondeur fictive (prof equivalent Azone et altitude
   double DureeDescente=ProfFict/vDesc;
+  tCaract Palier[20];
+
+
+  // init
+
+  int pt=0;
+  for (i=0;i<(int)nbcompart;i++) {
+    Palier[pt].sc      [i]=0;     // Sursat du compartiment
+    Palier[pt].tn2     [i]=1;     // Tension d'azote du tissu i en fin de niveau j
+    Palier[pt].dpalier [i]=0;     // Durée du palier J pour le compartiment i
+    Palier[pt].ppalier [i]=0;     // Profondeur 1er palier pour le compartiment i avant remontée
+  }
 
   // Calcul des éléments de saturation pour la descente
 
+  // ------------------------------------------------------
+  // Calcul de la saturation après de la descente
+  // Mémorisé dans Palier 0
+  int pp;
+
+  pp = CalcSaturation(0,ProfFict,DureeDescente, &Palier[pt]);
+
+  Palier[pt+1]=Palier[pt];
+
+  // ------------------------------------------------------
+  // Calcul de la saturation juste avant la remontée
+  // Mémorisé dans Palier 1
+  pp = CalcSaturation(ProfFict,ProfFict,Temps-DureeDescente, &Palier[++pt]);
+
+  Palier[pt+1]=Palier[pt];
+
+  pp = CalcSaturation(ProfFict,pp,(ProfFict-pp)/vMontA, &Palier[++pt]);
+
+  Palier[pt+1]=Palier[pt];
+
+  pp = CalcSaturation(ProfFict,pp,(ProfFict-pp)/vMontA, &Palier[++pt]);
+
+  printf ("Palier a %im, Duree=%f\n",pp);
+  /*
   for (i=0;i<(int)nbcompart;i++) {
-    // Calcul de la tN2 finale de tous les compartiments
-    // Après exposition a la profondeur 'prof' durant le temps 'temps'
-    tn2[i][Palier]  = Ti2Tf(0.8,ProfFict - 20,DureeDescente,periode[i]);
+    // Calcul de la tN2 finale de tous les compartiments après la descente
+    Palier[.tn2     [i]   = Ti2TfIntegr(0.8,0,ProfFict,DureeDescente,periode[i]);
+    Palier.ppalier [i]   = fppalier(tn2[Palier][i],sursatcrit[i]);
+    Palier.tn2     [i] = tn2     [Palier][i];
+    Palier.sc      [i]   = tn2     [Palier][i] / (1 + (pt / 10));
   }
   temps -= DureeDescente;
+  Palier++;
 
-  tDir1=-1;
-  pPal1=-100;
+  // ------------------------------------------------------
+  // Calcul de la saturation avant la remontée
+  // Mémorisé dans Palier 1
+  for (i=0;i<(int)nbcompart;i++) {
+    // Calcul de la tN2 finale de tous les compartiments avant la remontée
+    tn2[Palier][i]  = Ti2TfIntegr(tn2[Palier][i],ProfFict,ProfFict,temps,periode[i]);
+    // Ainsi que la profondeur minimum théorique du palier pour chaque compartiment
+    ppalier [Palier][i]   = fppalier(tn2[Palier][i],sursatcrit[i]);
+    tn2     [Palier+1][i] = tn2     [Palier][i];
+    sc      [Palier][i]   = tn2     [Palier][i] / (1 + (pt / 10));
+  }
+  Palier++;
+
+  // ------------------------------------------------------
+  // Fin de la plongée, on commence la remontée
+  // Calcul du pas d'intégration (1/5s)
+  // pas de remontée (1s) a 17m/mn -> (17/60)m
+  // Temps du pas de remontée = 1s
+
+#define PAS 60.0
+
+  bool fStop=false;
+  PasV = vMontA/PAS;
+  PasT =  1.0/PAS;
+  double durtot=0;
+  pt = ProfFict; //((int)(pPal / 3) + 1) * 3;
+  printf ("durtot|Prof");
+    for (i=0;i<nbcompart;i++)
+      printf ("|c%i-tn2|c%i-sc|c%i-Stop",periode[i],periode[i],periode[i]);
+    printf ("\n");
+  while (pt > 0) {
+
+    int ProchainPalier = Prof2Palier(pt);
+
+    // ------------------------------------------------------
+    // On Remonte a 17m/mn, par pas de 1/5 de secondes
+    // En vérifiant a chaque step si on doit stopper la remontée
+    fStop=false;
+    for (i=0;i<(int)nbcompart;i++) {
+      // Calcul de la tN2 finale de tous les compartiments après le Pas
+      tn2[Palier][i]  = Ti2TfIntegr(tn2[Palier][i],pt,pt-PasV,PasT,periode[i]);
+      // Ainsi que la profondeur minimum théorique du palier pour chaque compartiment
+      ppalier [Palier][i] = fppalier(   tn2[Palier][i],sursatcrit[i]);
+      sc [Palier][i] = tn2[Palier][i] / (1 + (pt/10));
+      if (tn2[i][Palier] / (1 + ProchainPalier/10) >= sursatcrit[i]) {
+        dpalier [Palier][i] = fdpalier(ProchainPalier,tn2[Palier][i],sursatcrit[i],periode[i]);
+      } else {
+        dpalier [Palier][i] = 0;
+      }
+    }
+    // On doit maintenant vérifier si les coeffs de sursaturation critiques sont
+    // Atteints ou dépassés au prochain palier
+    printf ("%6.3f|%6.3f",durtot,pt);
+    for (i=0;i<nbcompart;i++) {
+      printf ("|%5.3f|%5.3f",tn2[Palier][i],sc[Palier][i]);
+      if (sc[Palier][i]>=sursatcrit[i]) {
+        printf("|Yes");
+        fStop=true;
+      } else
+        printf ("|No");
+    }
+    printf ("\n");
+    if (!fStop)
+      pt -= PasV;
+    durtot+=PasT;
+  }
+    // ------------------------------------------------------
+    // Recherche si un Palier est a gerer
+*/
+/*
+  VERBOSE ("+-----------------------------------------------------------------------------+\n");
+  VERBOSE ("| Parametres de la plongée : Profondeur = %3.0f metres, Temps = %3.0f minutes     |\n",ProfReelle,Temps);
+  else {
+    printf ("+---------------------------------+\n");
+    printf ("| P = %3.0fm, T = %3.0fmn             |\n",ProfReelle,Temps);
+    printf ("+ - - - - - - - - - - - - - - - - +\n");
+  }
+
+  VERBOSE ("+-----------------------------------------------------------------------------+\n");
+  VERBOSE ("| Parametres de la plongée : Profondeur = %3.0f metres, Temps = %3.0f minutes     |\n",ProfReelle,Temps);
+  else {
+    printf ("+---------------------------------+\n");
+    printf ("| P = %3.0fm, T = %3.0fmn             |\n",ProfReelle,Temps);
+    printf ("+ - - - - - - - - - - - - - - - - +\n");
+  }
+
+  VERBOSE ("+-----------------------------------------------------------------------------+\n");
+  VERBOSE ("| Descente : %4im/mn, Duree Descente : %4.2fmn, Duree fond : %4.2fmn          |\n",vDesc,DureeDescente,temps);
+  VERBOSE ("+-----------------------------------------------------------------------------+\n");
+  VERBOSE ("| Informations de saturation a la fin de la descente                          |\n");
+  VERBOSE ("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +\n");
+  for (i=0;i<(int)nbcompart;i++) {
+    if (tn2[i][Palier]>sursatcrit[i]) {
+      VERBOSE ("| C%3.0i' | TN2 = %5.3f | Coeff Surs. Critique = %4.2f | plafond = %5.2f         |\n",periode[i],tn2[i][Palier],sursatcrit[i],ppalier1[i]*ppN2s/0.8);
+    } else {
+      VERBOSE ("| C%3.0i' | TN2 = %5.3f | Coeff Surs. Critique = %4.2f | plafond =  N.A          |\n",periode[i],tn2[i][Palier],sursatcrit[i]);
+    }
+  }
   for (i=0;i<(int)nbcompart;i++) {
     // Calcul de la tN2 finale de tous les compartiments
     // Après exposition a la profondeur 'prof' durant le temps 'temps'
-    tn2[i][Palier]  = Ti2Tf(tn2[i][Palier],ProfFict,temps,periode[i]);
+    //tn2[i][Palier]  = Ti2Tf(tn2[i][Palier],ProfFict,temps,periode[i]);
+    tn2[i][Palier]  = Ti2TfIntegr(tn2[i][Palier],ProfFict,ProfFict,temps,periode[i]);
 //    tn2[i][Palier]  = Ti2Tf(0.8,ProfFict,temps,periode[i]);
     // Ainsi que la profondeur minimum du palier pour chaque compartiment
     // Après l'exposition ci-dessus
@@ -186,8 +404,9 @@ void Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,
     }
   }
   if (tDir1==-1) Fatal(2,"Erreur recherche compartiment directeur");
-
+*/
   // Calcul du palier le plus profond
+/*
   pt1 = ((int)(pPal1 / 3) + 1) * 3;
 
   // Calcul de la profondeur moyenne
@@ -219,13 +438,6 @@ void Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,
   // Affichage des données de saturation juste avant
   // de décider de remonter au 1er palier
 
-  VERBOSE ("+-----------------------------------------------------------------------------+\n");
-  VERBOSE ("| Parametres de la plongée : Profondeur = %3.0f metres, Temps = %3.0f minutes     |\n",ProfReelle,Temps);
-  else {
-    printf ("+---------------------------------+\n");
-    printf ("| P = %3.0fm, T = %3.0fmn             |\n",ProfReelle,Temps);
-    printf ("+ - - - - - - - - - - - - - - - - +\n");
-  }
   VERBOSE ("+-----------------------------------------------------------------------------+\n");
   VERBOSE ("| Informations de saturation juste avant le debut de remontee                 |\n");
   VERBOSE ("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +\n");
@@ -320,7 +532,7 @@ void Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,
     printf ("| DTR = %5.1fmn                   |\n",ceil(DureeTotale));
     printf ("+---------------------------------+\n");
   }
-
+*/
 }
 // INPUT "Profondeur de la prochaine plongÃ©e ";prof
 // prof = prof * (0.8 / ppN2s) // profondeur fictive
