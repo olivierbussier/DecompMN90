@@ -5,16 +5,19 @@
 
 #include "util.h"
 #include "decomp.h"
+#include "version.h"
 
 using namespace std;
 
 void Help(void);
 
+const char * version = AutoVersion::FULLVERSION_STRING; //C++ example
+
 /*******************************************************************************************/
 void Help(void)
 /*******************************************************************************************/
 {
-  printf ("MN90 - V0.1 - 20/01/2014 (Olivier Bussier)\n");
+  printf ("MN90 - V%s - 20/01/2014 (Olivier Bussier)\n",version);
   printf ("Decomp -P val -T val [-v] [-D val] [-M val] [-m val]\n");
   printf (" - P value : Profondeur max atteinte durant la plongée\n");
   printf (" - T value : Temps entre l'immersion et le début de remontée a 15-17m/mn\n");
