@@ -4,7 +4,7 @@
 namespace AutoVersion{
 	
 	//Date Version Types
-	#define DATE "09"
+	#define DATE "10"
 	#define MONTH "02"
 	#define YEAR "2014"
 	#define UBUNTU_VERSION_STYLE  "14.02"
@@ -16,14 +16,14 @@ namespace AutoVersion{
 	//Standard Version Type
 	#define MAJOR  0
 	#define MINOR  0
-	#define BUILD  174
-	#define REVISION  2993574
+	#define BUILD  14
+	#define REVISION  46926
 	
 	//Miscellaneous Version Types
-	#define BUILDS_COUNT  241
-	#define RC_FILEVERSION 0,0,174,2993574
-	#define RC_FILEVERSION_STRING "0, 0, 174, 2993574\0"
-	#define FULLVERSION_STRING  "0.0.174.2993574"
+	#define BUILDS_COUNT  15
+	#define RC_FILEVERSION 0,0,14,46926
+	#define RC_FILEVERSION_STRING "0, 0, 14, 46926\0"
+	#define FULLVERSION_STRING  "0.0.14.46926"
 	
 	//These values are to keep track of your versioning state, don't modify them.
 	#define BUILD_HISTORY  0
