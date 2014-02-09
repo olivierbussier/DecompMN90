@@ -11,13 +11,11 @@ using namespace std;
 
 void Help(void);
 
-const char * version = AutoVersion::FULLVERSION_STRING; //C++ example
-
 /*******************************************************************************************/
 void Help(void)
 /*******************************************************************************************/
 {
-  printf ("MN90 - V%s - 20/01/2014 (Olivier Bussier)\n",version);
+  printf ("MN90 - V%d.%d Build %d du %s/%s/%s. Revision %d - Olivier Bussier)\n",MAJOR,MINOR,BUILDS_COUNT,DATE,MONTH,YEAR,REVISION);
   printf ("Decomp -P val -T val [-v] [-D val] [-M val] [-m val]\n");
   printf (" - P value : Profondeur max atteinte durant la plongée\n");
   printf (" - T value : Temps entre l'immersion et le début de remontée a 15-17m/mn\n");
