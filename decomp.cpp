@@ -33,7 +33,7 @@
 #include "util.h"
 #include "decomp.h"
 
-#define TEST
+//#define TEST
 
 #ifdef TEST
 int    periode   []={7    , 30   , 60   , 120 }; // période du tissu i : constantes
@@ -219,16 +219,21 @@ int    RechercheDirecteur(tCaract *Caract);
 int RechercheDirecteur(tCaract *Caract)
 /*******************************************************************************************/
 {
-  double palier=0;
+  int ProfPalier=0;
   int TissusDirecteur=-1;
   int DureePalier=0;
   int i;
 
   for (i=0;i<(int)nbcompart;i++) {
-    if (Caract->profMin[i]>0) {
-      if (palier<=Caract->profMN90[i]) {
+    if (Caract->profMN90[i]>0) {
+      if (ProfPalier<Caract->profMN90[i]) {
+        ProfPalier  = Caract->profMN90[i];
+        DureePalier = Caract->DureePalier[i];
+        TissusDirecteur = i;
+      }
+      if (ProfPalier == Caract->profMN90[i]) {
         if (DureePalier<Caract->DureePalier[i]) {
-          palier= Caract->profMN90[i];
+          DureePalier = Caract->DureePalier[i];
           TissusDirecteur = i;
         }
       }
@@ -359,7 +364,7 @@ void Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,
       //int TempsMinutes = (int)ceil((double)TempsPalier/60.);
       printf ("Palier : %imn a %.2im\n",(int)ceil((double)TempsPalier/60),ProfPalier);
       for (int x=0;x<(int)nbcompart;x++)
-        printf (" - CP%3i prof=%6.2f, profMN90=%2i, Duree=%4i, Minutes=%f\n", periode[x],Palier[pt].profMin[x],Palier[pt].profMN90[x],Palier[pt].DureePalier[x],ceil((double)Palier[pt].DureePalier[x]/60));
+        printf (" - CP%3i prof=%6.2f, profMN90=%2i, Duree=%4i, Minutes=%5.1f\n", periode[x],Palier[pt].profMin[x],Palier[pt].profMN90[x],Palier[pt].DureePalier[x],ceil((double)Palier[pt].DureePalier[x]/60));
       td = CalcSaturation(ProfPalier,ProfPalier,TempsPalier, &Palier[pt]);
       if (td!=-1) {
         NextPalier  = Palier[pt].profMN90[td];
@@ -371,6 +376,7 @@ void Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,
       vMont = vMontP; // Vitesse de remontée après le début des paliers
     } else {
       // Palier fini, on remonte au prochain
+      printf ("Remontee a %im\n",NextPalier);
       DureeRemont = (int)ceil(((double)((ProfPalier-NextPalier)*60.))/vMont);
       td = CalcSaturation(ProfPalier,NextPalier,DureeRemont, &Palier[pt]);
       if (td!=-1) {
