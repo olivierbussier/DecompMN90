@@ -311,10 +311,17 @@ void Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,
 
   int TempsPalier;
   int TempsSec      = Temps*60;
-  // int DureeDescente = ProfFict*60/vDesc;
+  int DureeDescente = ProfFict*60/vDesc;
 
   // init des pressions d'azote de départ
 
+  printf ("Paramètres:\n");
+  printf (" - Profondeur = %6.2fm, Durée = %6.2fmn\n",ProfReelle,Temps);
+  printf (" - Pression Azote en surface = %5.3f\n",pAzote);
+  printf (" - Vitesse de Descente = %im/s\n",vDesc);
+  printf (" - Vitesse Remontee avant paliers = %im/s\n",vMontA);
+  printf (" - Vitesse Remontee apres paliers = %im/s\n",vMontP);
+  printf ("----------------------------------------------------------------------------\n");
   pt=0;
   for (i=0;i<(int)nbcompart;i++) {
     // Palier[pt].sc      [i]=0;        // Sursat du compartiment
@@ -328,14 +335,14 @@ void Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,
   // Calcul de la saturation après de la descente
   // Mémorisé dans Palier 0
 
-  // ProfPalier = CalcSaturation(0,ProfFict,DureeDescente, &Palier[pt]);
+  CalcSaturation(0,ProfFict,DureeDescente, &Palier[pt]);
 
-  //Palier[pt+1]=Palier[pt];
-
+  Palier[pt+1]=Palier[pt];
+  pt++;
   // ------------------------------------------------------
   // Calcul de la saturation juste avant la remontée
   // Mémorisé dans Palier 1
-  td = CalcSaturation(ProfFict,ProfFict,TempsSec /*-DureeDescente*/, &Palier[pt]);
+  td = CalcSaturation(ProfFict,ProfFict,TempsSec - DureeDescente, &Palier[pt]);
   if (td==-1)
     ProfPalier = 0;
   else
@@ -364,7 +371,8 @@ void Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,
       //int TempsMinutes = (int)ceil((double)TempsPalier/60.);
       printf ("Palier : %imn a %.2im\n",(int)ceil((double)TempsPalier/60),ProfPalier);
       for (int x=0;x<(int)nbcompart;x++)
-        printf (" - CP%3i prof=%6.2f, profMN90=%2i, Duree=%4i, Minutes=%5.1f\n", periode[x],Palier[pt].profMin[x],Palier[pt].profMN90[x],Palier[pt].DureePalier[x],ceil((double)Palier[pt].DureePalier[x]/60));
+        if (Verbose)
+          printf (" - CP%3i prof=%6.2f, profMN90=%2i, Duree=%4i, Minutes=%5.1f\n", periode[x],Palier[pt].profMin[x],Palier[pt].profMN90[x],Palier[pt].DureePalier[x],ceil((double)Palier[pt].DureePalier[x]/60));
       td = CalcSaturation(ProfPalier,ProfPalier,TempsPalier, &Palier[pt]);
       if (td!=-1) {
         NextPalier  = Palier[pt].profMN90[td];
