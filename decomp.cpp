@@ -371,8 +371,7 @@ void Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,
       //int TempsMinutes = (int)ceil((double)TempsPalier/60.);
       printf ("Palier : %imn a %.2im\n",(int)ceil((double)TempsPalier/60),ProfPalier);
       for (int x=0;x<(int)nbcompart;x++)
-        if (Verbose)
-          printf (" - CP%3i prof=%6.2f, profMN90=%2i, Duree=%4i, Minutes=%5.1f\n", periode[x],Palier[pt].profMin[x],Palier[pt].profMN90[x],Palier[pt].DureePalier[x],ceil((double)Palier[pt].DureePalier[x]/60));
+        VERBOSE(" - CP%3i prof=%6.2f, profMN90=%2i, Duree=%4i, Minutes=%5.1f\n", periode[x],Palier[pt].profMin[x],Palier[pt].profMN90[x],Palier[pt].DureePalier[x],ceil((double)Palier[pt].DureePalier[x]/60));
       td = CalcSaturation(ProfPalier,ProfPalier,TempsPalier, &Palier[pt]);
       if (td!=-1) {
         NextPalier  = Palier[pt].profMN90[td];
