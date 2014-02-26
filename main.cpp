@@ -1,79 +1,108 @@
-#include <cstdlib>
-#include <iostream>
+#include <windows.h>
+#include <commctrl.h>
 #include <stdio.h>
-#include <getopt.h>
-
-#include "util.h"
+#include "resource.h"
 #include "decomp.h"
-#include "version.h"
+#include "util.h"
 
-using namespace std;
+HINSTANCE hInst;
+char *buffer;
 
-void Help(void);
-
-/*******************************************************************************************/
-void Help(void)
-/*******************************************************************************************/
+/**************************************************************************/
+int GetValueInt(HWND hwndDlg,int ID)
+/**************************************************************************/
 {
-  printf ("MN90 - V%d.%d Build %d du %s/%s/%s. Revision %d - Olivier Bussier)\n",MAJOR,MINOR,BUILDS_COUNT,DATE,MONTH,YEAR,REVISION);
-  printf ("Decomp -P val -T val [-v] [-D val] [-M val] [-m val]\n");
-  printf (" - P value : Profondeur max atteinte durant la plongée\n");
-  printf (" - T value : Temps entre l'immersion et le début de remontée a 15-17m/mn\n");
-  printf (" - D value : Vitesse de descente en m/mn (default=20m/mn)\n");
-  printf (" - M value : Vitesse de remontee avant palier en m/mn (default=17m/mn)\n");
-  printf (" - m value : Vitesse de remontee entre les palier en m/s (default=3m/mn)\n");
-  exit(EXIT_SUCCESS);
+  char result[1024];
+
+  if (GetWindowText(GetDlgItem (hwndDlg,ID),result,sizeof(result))==0)
+    return 0;
+  return atoi(result);
 }
 
-/*******************************************************************************************/
-int main(int argc, char *argv[])
-/*******************************************************************************************/
+/**************************************************************************/
+void SetValueInt(HWND hwndDlg,int ID, int Value)
+/**************************************************************************/
 {
-  // Analyse des params
+  char result[1024];
 
-  char c;
-  int prof=-1,temps=-1,Verbose=false;
-  int vDesc=20,vMontA=17,vMontP=3;
-  double pAzote=0.79;
+  sprintf (result,"%i",Value);
+  SetWindowText(GetDlgItem (hwndDlg,ID),result);
+}
 
-  while ((c = getopt (argc, argv, "P:T:D:M:m:hH?vV")) != -1) {
-    switch (c) {
-      case 'v': // Verbose
-      case 'V': // Verbose
-        Verbose=true;
-        break;
-      case 'A': // Pression partielle d'azote en surface
-        pAzote = atoi(optarg);
-        break;
-      case 'D': // Vitesse de descente
-        vDesc = atoi(optarg);
-        break;
-      case 'M': // Vitesse de montée
-        vMontA = atoi(optarg);
-        break;
-      case 'm': // Vitesse de montée
-        vMontP = atoi(optarg);
-        break;
-      case 'P': // Profondeur Max
-        prof = atoi(optarg);
-        break;
-      case 'T':
-        temps = atoi(optarg);
-        break;
-      case '?':
-      case 'h':
-      case 'H':
-        Help();
-        break;
-      default:
-        abort ();
+/**************************************************************************/
+double GetValueFloat(HWND hwndDlg,int ID)
+/**************************************************************************/
+{
+  char result[1024];
+
+  if (GetWindowText(GetDlgItem (hwndDlg,ID),result,sizeof(result))==0)
+    return 0;
+  return atof(result);
+}
+
+/**************************************************************************/
+void SetValueFloat(HWND hwndDlg,int ID, double Value)
+/**************************************************************************/
+{
+  char result[1024];
+
+  sprintf (result,"%6.4f",Value);
+  SetWindowText(GetDlgItem (hwndDlg,ID),result);
+}
+
+/**************************************************************************/
+BOOL CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+/**************************************************************************/
+{
+    HWND hwndtemp;
+    HFONT hFont;
+    double Prof,Duree,vazotsurf;
+    int vdesc,vasca,vascp,verbose;
+
+    switch(uMsg) {
+      case WM_INITDIALOG:
+        SetValueInt  (hwndDlg,ID_VDESC ,200);
+        SetValueInt  (hwndDlg,ID_VASCA , 15);
+        SetValueInt  (hwndDlg,ID_VASCP,   6);
+        SetValueFloat(hwndDlg,ID_VAZOTSURF,0.7808);
+
+        // Set the font for EDIT
+        hFont=CreateFont(14, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,DEFAULT_PITCH | FF_SWISS, "Courier New");
+        // Set the new font for the control:
+        SendMessage (GetDlgItem (hwndDlg,ID_TEXTRESULT), WM_SETFONT, WPARAM (hFont), TRUE);
+
+        return TRUE;
+
+      case WM_CLOSE:
+        EndDialog(hwndDlg, 0);
+        return TRUE;
+
+      case WM_COMMAND:
+        switch(LOWORD(wParam)) {
+          case ID_BT_CALC:
+            Prof    = GetValueInt  (hwndDlg,ID_PROF);
+            Duree   = GetValueInt  (hwndDlg,ID_DUREE);
+            vdesc   = GetValueInt  (hwndDlg,ID_VDESC);
+            vasca   = GetValueInt  (hwndDlg,ID_VASCA);
+            vascp   = GetValueInt  (hwndDlg,ID_VASCP);
+            vazotsurf   = GetValueFloat(hwndDlg,ID_VAZOTSURF);
+            verbose = (IsDlgButtonChecked  (hwndDlg,ID_VERBOSE)==BST_CHECKED);
+            buffer  = Decomp(Prof,Duree,verbose,vdesc,vasca,vascp,vazotsurf);
+            hwndtemp= GetDlgItem (hwndDlg,ID_TEXTRESULT);
+            SetWindowText(hwndtemp,buffer);
+            strend(buffer);
+            break;
+        }
+        return TRUE;
     }
-  }
-  if (prof==-1 || temps==-1) {
-    Help();
-    Fatal(3,"Parametres d'entrée incorercts");
-  }
-  Decomp(prof,temps,Verbose,vDesc,vMontA,vMontP,pAzote);
-  //system("PAUSE");
-  return EXIT_SUCCESS;
+    return FALSE;
+}
+
+
+int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+{
+    hInst=hInstance;
+    InitCommonControls();
+    buffer=(char *)malloc(100000);
+    return DialogBox(hInst, MAKEINTRESOURCE(DLG_MAIN), NULL, (DLGPROC)DlgMain);
 }
