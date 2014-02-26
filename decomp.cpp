@@ -130,7 +130,7 @@ tGroup Group[] = {
   {1.42,"N" },
   {1.47,"O" },
   {1.51,"P" },
-  {5.00,"**" },
+  {2.00,"**" },
 };
 #define NBGROUPS (sizeof(Group)/sizeof(Group[0]))
 
