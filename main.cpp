@@ -1,9 +1,11 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <stdio.h>
+
 #include "resource.h"
-#include "decomp.h"
-#include "util.h"
+#include "uutil.h"
+
+#include "DecompMN90.h"
 
 HINSTANCE hInst;
 char *buffer;
@@ -50,6 +52,7 @@ void SetValueFloat(HWND hwndDlg,int ID, double Value)
   SetWindowText(GetDlgItem (hwndDlg,ID),result);
 }
 
+void GraphUpdate(HWND hwnd);
 /**************************************************************************/
 BOOL CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 /**************************************************************************/
@@ -61,7 +64,7 @@ BOOL CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     switch(uMsg) {
       case WM_INITDIALOG:
-        SetValueInt  (hwndDlg,ID_VDESC ,200);
+        SetValueInt  (hwndDlg,ID_VDESC , 20);
         SetValueInt  (hwndDlg,ID_VASCA , 15);
         SetValueInt  (hwndDlg,ID_VASCP,   6);
         SetValueFloat(hwndDlg,ID_VAZOTSURF,0.7808);
@@ -70,7 +73,7 @@ BOOL CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         hFont=CreateFont(14, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,DEFAULT_PITCH | FF_SWISS, "Courier New");
         // Set the new font for the control:
         SendMessage (GetDlgItem (hwndDlg,ID_TEXTRESULT), WM_SETFONT, WPARAM (hFont), TRUE);
-
+        GraphUpdate(GetDlgItem (hwndDlg,IDC_CUSTOM1));
         return TRUE;
 
       case WM_CLOSE:
@@ -98,11 +101,16 @@ BOOL CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return FALSE;
 }
 
+ATOM BatteryGraphRegisterClass (HINSTANCE hInstance);
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
     hInst=hInstance;
+
+    BatteryGraphRegisterClass (hInstance);
+
     InitCommonControls();
+
     buffer=(char *)malloc(100000);
     return DialogBox(hInst, MAKEINTRESOURCE(DLG_MAIN), NULL, (DLGPROC)DlgMain);
 }

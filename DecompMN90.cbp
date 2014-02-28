@@ -13,6 +13,7 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
+					<Add directory="include" />
 				</Compiler>
 			</Target>
 			<Target title="Release">
@@ -22,6 +23,7 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
+					<Add directory="include" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
@@ -37,16 +39,24 @@
 			<Add library="kernel32" />
 			<Add library="comctl32" />
 		</Linker>
-		<Unit filename="decomp.cpp" />
-		<Unit filename="decomp.h" />
+		<Unit filename="DecompBuhlmann.cpp" />
+		<Unit filename="DecompMN90.cpp" />
+		<Unit filename="DecompMN90.h" />
+		<Unit filename="Graph.cpp" />
+		<Unit filename="cDecompList.cpp" />
+		<Unit filename="cDecompList.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="manifest.xml" />
 		<Unit filename="resource.h" />
 		<Unit filename="resource.rc">
 			<Option compilerVar="WINDRES" />
 		</Unit>
-		<Unit filename="util.cpp" />
-		<Unit filename="util.h" />
+		<Unit filename="ualloc.cpp" />
+		<Unit filename="ualloc.h" />
+		<Unit filename="ufatal.cpp" />
+		<Unit filename="ufatal.h" />
+		<Unit filename="uutil.cpp" />
+		<Unit filename="uutil.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />

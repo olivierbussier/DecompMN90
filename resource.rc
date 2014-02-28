@@ -7,13 +7,37 @@
 #include <richedit.h>
 #include "resource.h"
 
+
+
+
+//
+// Menu resources
+//
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+IDR_MENU1 MENU
+{
+    POPUP "File"
+    {
+        MENUITEM "Open", 0
+        MENUITEM "Close", 0
+        MENUITEM "Exit", 0
+    }
+    POPUP "Help"
+    {
+        MENUITEM "About MN90", 0
+    }
+}
+
+
+
 //
 // Dialog resources
 //
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-DLG_MAIN DIALOG 0, 0, 563, 337
+DLG_MAIN DIALOG 0, 0, 679, 417
 STYLE DS_3DLOOK | DS_CENTER | DS_SHELLFONT | WS_CAPTION | WS_VISIBLE | WS_POPUP | WS_SYSMENU
 CAPTION "MN90 - Olivier Bussier"
+MENU IDR_MENU1
 FONT 10, "Arial Narrow"
 {
     GROUPBOX        "Paramètres Plongée", 0, 11, 39, 158, 55, 0, WS_EX_LEFT
@@ -28,19 +52,20 @@ FONT 10, "Arial Narrow"
     AUTOCHECKBOX    "Détails compartiments", ID_VERBOSE, 19, 157, 83, 8, 0, WS_EX_LEFT
     EDITTEXT        ID_VASCA, 88, 111, 57, 12, ES_AUTOHSCROLL, WS_EX_LEFT
     EDITTEXT        ID_VASCP, 88, 125, 57, 12, ES_AUTOHSCROLL, WS_EX_LEFT
-    EDITTEXT        ID_TEXTRESULT, 187, 6, 371, 327, WS_VSCROLL | NOT WS_TABSTOP | ES_AUTOHSCROLL | ES_MULTILINE | ES_WANTRETURN, WS_EX_LEFT
+    EDITTEXT        ID_TEXTRESULT, 305, 1, 371, 193, WS_VSCROLL | NOT WS_TABSTOP | ES_AUTOHSCROLL | ES_MULTILINE | ES_WANTRETURN, WS_EX_LEFT
     LTEXT           "Profondeur", 0, 54, 50, 36, 8, SS_LEFT, WS_EX_LEFT
     LTEXT           "Vitesse descente", 0, 36, 17, 53, 8, SS_LEFT, WS_EX_LEFT
-    LTEXT           "m/s", 0, 149, 17, 12, 8, SS_LEFT, WS_EX_LEFT
+    LTEXT           "m/mn", 0, 149, 17, 18, 8, SS_LEFT, WS_EX_LEFT
     LTEXT           "m", 0, 149, 50, 8, 8, SS_LEFT, WS_EX_LEFT
     LTEXT           "mn", 0, 149, 64, 10, 8, SS_LEFT, WS_EX_LEFT
     LTEXT           "Bars", 0, 149, 78, 16, 8, SS_LEFT, WS_EX_LEFT
-    LTEXT           "m/s", 0, 147, 113, 12, 8, SS_LEFT, WS_EX_LEFT
-    LTEXT           "m/s", 0, 147, 127, 12, 8, SS_LEFT, WS_EX_LEFT
+    LTEXT           "m/mn", 0, 147, 113, 18, 8, SS_LEFT, WS_EX_LEFT
+    LTEXT           "m/mn", 0, 147, 127, 18, 8, SS_LEFT, WS_EX_LEFT
     LTEXT           "Vitesse avant paliers", 0, 21, 113, 65, 8, SS_LEFT, WS_EX_LEFT
     LTEXT           "Vitesse entre paliers", 0, 22, 127, 64, 8, SS_LEFT, WS_EX_LEFT
     LTEXT           "Durée", 0, 70, 64, 20, 8, SS_LEFT, WS_EX_LEFT
     LTEXT           "Pression N2 en surface", 0, 16, 78, 74, 8, SS_LEFT, WS_EX_LEFT
+    CONTROL         "Custom1", IDC_CUSTOM1, "BatteryGraph", 0x50010000, 1, 197, 675, 217, 0x00000000
 }
 
 
