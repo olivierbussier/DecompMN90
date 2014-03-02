@@ -26,20 +26,18 @@ const double sursatcrit[]={2.72 , 2.54 , 2.38 , 2.20 , 2.04 , 1.82 , 1.68 , 1.61
 
 const int nbcompart = sizeof(periode)/sizeof(periode[0]);
 
-typedef struct {
+struct tCaract {
   int    TissusDirecteur;
   double Profondeur;
   double Temps;
   double tn2         [nbcompart];     // Tension d'azote du tissu i en fin de niveau j
-  //double ppalier     [nbcompart];     // Plafond pour le compartiment i
-
   double pN2Prof     [nbcompart];
   double sursattissus[nbcompart];
   double pN2tissusMin[nbcompart];
   double profMin     [nbcompart];
   int    profMN90    [nbcompart];
   int    DureePalier [nbcompart];
-} tCaract;
+};
 
 char  *Decomp     (double ProfReelle, double temps,int Verbose, int vDesc, int vMontA,int vMontP,double pAzote);
 int    CalcSaturation(double ProfDepart,double ProfArrivee,int Temps, tCaract *Caract);

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <list>
 
 #include "ufatal.h"
 #include "uutil.h"
@@ -27,6 +28,8 @@ tCompart Compartiment[] = {
 #define C120 11
 
 int Prof2Palier(double ProfActuelle);
+
+std::list<tCaract> DiveParms;
 
 /*******************************************************************************************/
 double Prof2Press(double Profondeur)
@@ -191,24 +194,25 @@ int RechercheDirecteur(tCaract *Caract)
 }
 
 /*******************************************************************************************/
-int CalcSaturation(double ProfDepart,double ProfArrivee,int Temps, tCaract *Caract)
+int CalcSaturation(double ProfDepart,double ProfArrivee,int Temps/*, std::list<tCaract>DiveParms*/)
 /*******************************************************************************************/
 {
-#define PAS_T  5  // En secondes
+#define PAS_T  1  // En secondes
 
-  int    Duree = Temps;                                   // Duree est exprimée en secondes
-  double PasV  = ((ProfArrivee-ProfDepart)/Duree)*PAS_T;  // Le pas est la distance parcourue en 1s
+  int    Duree = 0;                                   // Duree est exprimée en secondes
+  double PasV  = ((ProfArrivee-ProfDepart)/Temps)*PAS_T;  // Le pas est la distance parcourue en 1s
   int    PasT  = PAS_T;
   int i,prf;
   double ProfActuelle = ProfDepart;
   double ProfFinale   = ProfDepart+PasV;
   double TempsPalier;
+  tCaract tmp=DiveParms.back();
 
   // Le principe est de vérifier a chaque pas qu'il y a
   // ou pas un palier a faire a ce niveau
   // --------------------------------------------------
 
-  while (Duree>0) {
+  while (Duree<Temps) {
 
     // Calcul des saturations pour tous les compartiments
 
@@ -216,34 +220,37 @@ int CalcSaturation(double ProfDepart,double ProfArrivee,int Temps, tCaract *Cara
 
       // Calcul de la tN2 finale de tous les compartiments
 
-      Caract->tn2[i] = Ti2TfIntegr(Caract->tn2[i],ProfActuelle,ProfFinale,PasT,periode[i]);
+      tmp.tn2[i] = Ti2TfIntegr(tmp.tn2[i],ProfActuelle,ProfFinale,PasT,periode[i]);
 
       // Calcul de la sursaturation
 
-      Caract->pN2Prof[i]      = (ProfFinale/10+1)*AzotSurf;
-      Caract->sursattissus[i] = Caract->pN2Prof[i]/Caract->tn2[i];
-      Caract->pN2tissusMin[i] = Caract->tn2[i]/sursatcrit[i];
-      Caract->profMin[i]      = ((Caract->pN2tissusMin[i]/*/0.8*/)-1)*10;
-      Caract->profMN90[i]     = Prof2Palier(Caract->profMin[i]);
+      tmp.pN2Prof[i]      = (ProfFinale/10+1)*AzotSurf;
+      tmp.sursattissus[i] = tmp.pN2Prof[i]/tmp.tn2[i];
+      tmp.pN2tissusMin[i] = tmp.tn2[i]/sursatcrit[i];
+      tmp.profMin[i]      = ((tmp.pN2tissusMin[i]/*/0.8*/)-1)*10;
+      tmp.profMN90[i]     = Prof2Palier(tmp.profMin[i]);
     }
+    // Calcul des paliers
+    for (i=0;i<(int)nbcompart;i++) {
+      // Durée de palier
+      prf = tmp.profMN90[i];
+      TempsPalier = ceil(fdpalier(prf, tmp.tn2[i],sursatcrit[i],periode[i])*60);
+      if (prf>0 && TempsPalier>0) {
+        // TempsPalier = ceil(fdpalier(prf, Caract->tn2[i],sursatcrit[i],periode[i])*60);
+        tmp.DureePalier[i] = TempsPalier;
+      } else {
+        tmp.DureePalier[i] = 0;
+      }
+    }
+    tmp.Profondeur=ProfActuelle;
+    tmp.Temps     =PasT;
+    DiveParms.push_back(tmp);
 
-    Duree-=PAS_T;
+    Duree+=PAS_T;
     ProfActuelle += PasV;
     ProfFinale   += PasV;
   }
-  // Calcul des paliers
-  for (i=0;i<(int)nbcompart;i++) {
-    // Durée de palier
-    prf = Caract->profMN90[i];
-    TempsPalier = ceil(fdpalier(prf, Caract->tn2[i],sursatcrit[i],periode[i])*60);
-    if (prf>0 && TempsPalier>0) {
-      // TempsPalier = ceil(fdpalier(prf, Caract->tn2[i],sursatcrit[i],periode[i])*60);
-      Caract->DureePalier[i] = TempsPalier;
-    } else {
-      Caract->DureePalier[i] = 0;
-    }
-  }
-  return RechercheDirecteur(Caract);
+  return RechercheDirecteur(&tmp);
 }
 
 /*******************************************************************************************/
@@ -253,7 +260,7 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
   double ppN2s=pAzote;
   int i,pt,td;
   double ProfFict = ProfReelle*(AzotSurf/ppN2s); // profondeur fictive (prof equivalent Azone et altitude
-  tCaract Palier[200];
+  tCaract Palier;
   int DureeRemont;
   int NextPalier, ProfPalier;
   char *buffer;
@@ -263,6 +270,8 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
   int DureeDescente = ProfFict*60/vDesc;
 
   // init des pressions d'azote de départ
+
+  DiveParms.clear();
 
   buffer = strinit();
   buffer = str (buffer, "Paramètres:\r\n");
@@ -275,32 +284,32 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
   pt=0;
   for (i=0;i<(int)nbcompart;i++) {
     // Palier[pt].sc      [i]=0;        // Sursat du compartiment
-    Palier[pt].tn2     [i]=AzotSurf; // Tension d'azote du tissu i en fin de niveau j
-    Palier[pt].profMin [i]=0;
-    Palier[pt].DureePalier[i]=0;
+    Palier.tn2     [i]=AzotSurf; // Tension d'azote du tissu i en fin de niveau j
+    Palier.profMin [i]=0;
+    Palier.DureePalier[i]=0;
     //Palier[pt].ppalier [i]=0;        // Profondeur 1er palier pour le compartiment i avant remontée
   }
-
+  Palier.Profondeur=0;
+  Palier.Temps     =0;
+  DiveParms.push_back(Palier);
   // ------------------------------------------------------
   // Calcul de la saturation après de la descente
   // Mémorisé dans Palier 0
 
-  CalcSaturation(0,ProfFict,DureeDescente, &Palier[pt]);
-  Palier[pt].Profondeur=ProfFict;
-  Palier[pt].Temps     =DureeDescente;
-  Palier[pt+1]=Palier[pt];
-  pt++;
+  CalcSaturation(0,ProfFict,DureeDescente/*, DiveParms*/);
+  //Palier.Profondeur=ProfFict;
+  //Palier.Temps     =DureeDescente;
+  //DiveParms.push_back(Palier);
+
   // ------------------------------------------------------
   // Calcul de la saturation juste avant la remontée
   // Mémorisé dans Palier 1
-  td = CalcSaturation(ProfFict,ProfFict,TempsSec /*- DureeDescente*/, &Palier[pt]);
+  td = CalcSaturation(ProfFict,ProfFict,TempsSec /*- DureeDescente*//*, &DiveParms*/);
+  Palier=DiveParms.back();
   if (td==-1)
     ProfPalier = 0;
   else
-    ProfPalier = Palier[pt].profMN90[td];
-  Palier[pt].Profondeur=ProfFict;
-  Palier[pt].Temps     =TempsSec;
-  Palier[pt+1]=Palier[pt];
+    ProfPalier = Palier.profMN90[td];
 
   // ------------------------------------------------------
   // On amorce la remontée jusqu'au palier calculé
@@ -310,10 +319,12 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
   DureeRemont     = (int)ceil(((double)((ProfFict-ProfPalier)*60.))/vMontA);
   DTR+=DureeRemont;
 
-  td = CalcSaturation(ProfFict,ProfPalier,DureeRemont, &Palier[++pt]);
+  td = CalcSaturation(ProfFict,ProfPalier,DureeRemont/*, &DiveParms*/);
+  Palier=DiveParms.back();
+
   if (td!=-1) {
-    NextPalier  = Palier[pt].profMN90[td];
-    TempsPalier = Palier[pt].DureePalier[td];
+    NextPalier  = Palier.profMN90[td];
+    TempsPalier = Palier.DureePalier[td];
   } else {
     NextPalier=0;
     TempsPalier=0;
@@ -332,13 +343,15 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
             buffer = str(buffer," ->");
           else
             buffer = str(buffer," - ");
-          buffer = str (buffer,"Compartiment%3imn plafond=%6.2fm, palier MN90=%2im, Duree=%4is/%5.1fmn\r\n",periode[x],Palier[pt].profMin[x],Palier[pt].profMN90[x],Palier[pt].DureePalier[x],ceil((double)Palier[pt].DureePalier[x]/60));
+          buffer = str (buffer,"Compartiment%3imn plafond=%6.2fm, palier MN90=%2im, Duree=%4is/%5.1fmn\r\n",periode[x],Palier.profMin[x],Palier.profMN90[x],Palier.DureePalier[x],ceil((double)Palier.DureePalier[x]/60));
         }
-      td = CalcSaturation(ProfPalier,ProfPalier,TempsPalier, &Palier[pt]);
+      td = CalcSaturation(ProfPalier,ProfPalier,TempsPalier/*, DiveParms*/);
+      Palier=DiveParms.back();
+
       DTR+=(ceil(TempsPalier/60.0)*60);
       if (td!=-1) {
-        NextPalier  = Palier[pt].profMN90[td];
-        TempsPalier = Palier[pt].DureePalier[td];
+        NextPalier  = Palier.profMN90[td];
+        TempsPalier = Palier.DureePalier[td];
       } else {
         NextPalier=0;
         TempsPalier=0;
@@ -348,21 +361,20 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
       // Palier fini, on remonte au prochain
       //buffer = str (buffer,"Remontee a %im\r\n",NextPalier);
       DureeRemont = (int)ceil(((double)((ProfPalier-NextPalier)*60.))/vMont);
-      td = CalcSaturation(ProfPalier,NextPalier,DureeRemont, &Palier[pt]);
+      td = CalcSaturation(ProfPalier,NextPalier,DureeRemont/*, DiveParms*/);
+      Palier=DiveParms.back();
       DTR+=DureeRemont;
       if (td!=-1) {
-        NextPalier  = Palier[pt].profMN90[td];
-        TempsPalier = Palier[pt].DureePalier[td];
+        NextPalier  = Palier.profMN90[td];
+        TempsPalier = Palier.DureePalier[td];
       } else {
         NextPalier=0;
         TempsPalier=0;
       }
       ProfPalier=NextPalier;
     }
-    Palier[pt+1]=Palier[pt];
-    pt++;
   } while(ProfPalier>0);
   buffer = str (buffer,"DTR = %4.1fmn\r\n",ceil(DTR/60.0));
-  buffer = str (buffer,"Azote résiduel C120 = %fmn -> GPS = %s\r\n",Palier[pt].tn2[C120],Groupe(Palier[pt].tn2[C120]));
+  buffer = str (buffer,"Azote résiduel C120 = %fmn -> GPS = %s\r\n",Palier.tn2[C120],Groupe(Palier.tn2[C120]));
   return buffer;
 }

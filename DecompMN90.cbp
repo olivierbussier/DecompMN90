@@ -43,8 +43,6 @@
 		<Unit filename="DecompMN90.cpp" />
 		<Unit filename="DecompMN90.h" />
 		<Unit filename="Graph.cpp" />
-		<Unit filename="cDecompList.cpp" />
-		<Unit filename="cDecompList.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="manifest.xml" />
 		<Unit filename="resource.h" />
