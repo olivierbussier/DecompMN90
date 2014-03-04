@@ -1,6 +1,8 @@
 #ifndef DECOMP_H_INCLUDED
 #define DECOMP_H_INCLUDED
 
+#include <list>
+
 struct tCompart {
   const char *Name;
   const int Periode;
@@ -37,6 +39,13 @@ struct tCaract {
   double profMin     [nbcompart];
   int    profMN90    [nbcompart];
   int    DureePalier [nbcompart];
+};
+
+struct tGraph {
+  int EchX,EchY;
+  int DivX,DivY;
+  bool ok;
+  std::list<tCaract> *G;
 };
 
 char  *Decomp     (double ProfReelle, double temps,int Verbose, int vDesc, int vMontA,int vMontP,double pAzote);

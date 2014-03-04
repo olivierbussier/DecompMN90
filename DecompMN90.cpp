@@ -28,8 +28,49 @@ tCompart Compartiment[] = {
 #define C120 11
 
 int Prof2Palier(double ProfActuelle);
+void SetParmsGraph(tGraph *tmp);
+void StartGraph (void);
+int CalcSaturation(double ProfDepart,double ProfArrivee,int Temps/*, std::list<tCaract>DiveParms*/);
 
 std::list<tCaract> DiveParms;
+
+/*******************************************************************************************/
+void StartGraph (void)
+/*******************************************************************************************/
+{
+  tCaract tmp;
+  double Profondeur=-1,Temps=-1;
+  //int ProfLigne, TempsLigne;
+  std::list<tCaract>::iterator it;
+  tGraph Graph;
+
+  for (it = DiveParms.begin(); it != DiveParms.end(); it++) {
+    tmp = *it;
+    if (tmp.Profondeur>Profondeur)
+      Profondeur = tmp.Profondeur;
+  }
+  Temps = tmp.Temps;
+
+  // --- Construction des echelles ---
+  // 5% a gauche et 5% a droite ----
+  // 5%m en dessous
+  // ---------------------------------
+
+  if (Temps<0 || Profondeur<0)
+    return;
+
+  Graph.EchX = Temps      + (Temps     *10/100);
+  Graph.EchY = Profondeur + (Profondeur* 5/100);
+
+  // --- Construction des Lignes ---
+  // Principe : environ 10 lignes verticales
+
+  Graph.DivX = ((int)(Temps/10)/5)*5;      // Et réajustement en multiples de 5
+  Graph.DivY = ((int)(Profondeur/10)/5)*5;
+
+  Graph.G = &DiveParms;
+  SetParmsGraph(&Graph);
+}
 
 /*******************************************************************************************/
 double Prof2Press(double Profondeur)
@@ -243,7 +284,7 @@ int CalcSaturation(double ProfDepart,double ProfArrivee,int Temps/*, std::list<t
       }
     }
     tmp.Profondeur=ProfActuelle;
-    tmp.Temps     =PasT;
+    tmp.Temps    +=PasT;
     DiveParms.push_back(tmp);
 
     Duree+=PAS_T;
@@ -258,7 +299,7 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
 /*******************************************************************************************/
 {
   double ppN2s=pAzote;
-  int i,pt,td;
+  int i,td;
   double ProfFict = ProfReelle*(AzotSurf/ppN2s); // profondeur fictive (prof equivalent Azone et altitude
   tCaract Palier;
   int DureeRemont;
@@ -281,7 +322,7 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
   buffer = str (buffer," - Vitesse Remontee avant paliers = %im/mn\r\n",vMontA);
   buffer = str (buffer," - Vitesse Remontee pendant les paliers = %im/mn\r\n",vMontP);
   buffer = str (buffer,"----------------------------------------------------------------------------\r\n");
-  pt=0;
+
   for (i=0;i<(int)nbcompart;i++) {
     // Palier[pt].sc      [i]=0;        // Sursat du compartiment
     Palier.tn2     [i]=AzotSurf; // Tension d'azote du tissu i en fin de niveau j
@@ -375,6 +416,8 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
     }
   } while(ProfPalier>0);
   buffer = str (buffer,"DTR = %4.1fmn\r\n",ceil(DTR/60.0));
-  buffer = str (buffer,"Azote résiduel C120 = %fmn -> GPS = %s\r\n",Palier.tn2[C120],Groupe(Palier.tn2[C120]));
+  buffer = str (buffer,"Azote résiduel C120 = %fmn\r\n",Palier.tn2[C120]);
+  buffer = str (buffer," -> GPS = %s\r\n",Groupe(Palier.tn2[C120]));
+  StartGraph();
   return buffer;
 }
