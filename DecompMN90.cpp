@@ -378,13 +378,14 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
       // Palier confirmé
       //int TempsMinutes = (int)ceil((double)TempsPalier/60.);
       buffer = str (buffer,"Palier : %imn a %.2im\r\n",(int)ceil((double)TempsPalier/60),ProfPalier);
+      buffer = str (buffer,"  DTR:%is, %6.2fmn->%i\r\n",DTR, ((double)TempsPalier)/60.0,(int)ceil(TempsPalier/60.0));
       if (Verbose)
         for (int x=0;x<(int)nbcompart;x++) {
           if (x==td)
             buffer = str(buffer," ->");
           else
             buffer = str(buffer," - ");
-          buffer = str (buffer,"Compartiment%3imn plafond=%6.2fm, palier MN90=%2im, Duree=%4is/%5.1fmn\r\n",periode[x],Palier.profMin[x],Palier.profMN90[x],Palier.DureePalier[x],ceil((double)Palier.DureePalier[x]/60));
+          buffer = str (buffer,"C%3imn: Min=%6.2fm, pMN90=%2im, T=%4is/%5.1fmn\r\n",periode[x],Palier.profMin[x],Palier.profMN90[x],Palier.DureePalier[x],ceil((double)Palier.DureePalier[x]/60));
         }
       td = CalcSaturation(ProfPalier,ProfPalier,TempsPalier/*, DiveParms*/);
       Palier=DiveParms.back();
