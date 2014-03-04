@@ -4,11 +4,15 @@
 
 #include "resource.h"
 #include "uutil.h"
+#include "version.h"
 
 #include "DecompMN90.h"
 
 HINSTANCE hInst;
 char *buffer;
+
+void GraphUpdate(HWND hwnd);
+
 
 /**************************************************************************/
 int GetValueInt(HWND hwndDlg,int ID)
@@ -51,8 +55,64 @@ void SetValueFloat(HWND hwndDlg,int ID, double Value)
   sprintf (result,"%6.4f",Value);
   SetWindowText(GetDlgItem (hwndDlg,ID),result);
 }
+/*
+	//Date Version Types
+	static const char DATE[] = "04";
+	static const char MONTH[] = "03";
+	static const char YEAR[] = "2014";
+	static const char UBUNTU_VERSION_STYLE[] =  "14.03";
 
-void GraphUpdate(HWND hwnd);
+	//Software Status
+	static const char STATUS[] =  "Alpha";
+	static const char STATUS_SHORT[] =  "a";
+
+	//Standard Version Type
+	static const long MAJOR  = 0;
+	static const long MINOR  = 4;
+	static const long BUILD  = 9;
+	static const long REVISION  = 42;
+
+	//Miscellaneous Version Types
+	static const long BUILDS_COUNT  = 21;
+	#define RC_FILEVERSION 0,4,9,42
+	#define RC_FILEVERSION_STRING "0, 4, 9, 42\0"
+	static const char FULLVERSION_STRING [] = "0.4.9.42";
+
+	//These values are to keep track of your versioning state, don't modify them.
+	static const long BUILD_HISTORY  = 9;
+*/
+
+/**************************************************************************/
+BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
+/**************************************************************************/
+{
+  char buffer[2048];
+
+  switch(Message) {
+    case WM_INITDIALOG:
+      sprintf(buffer,"Version %li.%li.%li révision %li du %s/%s/%s\r\nBuild No %li",AutoVersion::MAJOR,
+                                                                                    AutoVersion::MINOR,
+                                                                                    AutoVersion::BUILD,
+                                                                                    AutoVersion::REVISION,
+                                                                                    AutoVersion::DATE,
+                                                                                    AutoVersion::MONTH,
+                                                                                    AutoVersion::YEAR,
+                                                                                    AutoVersion::BUILDS_COUNT);
+      SetWindowText(GetDlgItem (hwnd,ID_VERSION),buffer);
+      return TRUE;
+    case WM_COMMAND:
+      switch(LOWORD(wParam)) {
+        case IDOK:
+          EndDialog(hwnd, IDOK);
+          break;
+      }
+      break;
+    default:
+      return FALSE;
+  }
+  return TRUE;
+}
+
 /**************************************************************************/
 BOOL CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 /**************************************************************************/
@@ -94,6 +154,9 @@ BOOL CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             hwndtemp= GetDlgItem (hwndDlg,ID_TEXTRESULT);
             SetWindowText(hwndtemp,buffer);
             strend(buffer);
+            break;
+          case ID_HELP_ABOUT:
+            DialogBox(GetModuleHandle(NULL),MAKEINTRESOURCE(DLG_ABOUT), hwndDlg, AboutDlgProc);
             break;
         }
         return TRUE;

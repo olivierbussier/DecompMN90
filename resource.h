@@ -3,10 +3,13 @@
 #endif
 
 #define IDI_ICONAPPLI                           1
-#define DLG_MAIN                                100
 #define IDR_MENU1                               101
+#define ID_HELP_ABOUT                           102
+#define DLG_MAIN                                110
+#define DLG_ABOUT                               111
 #define ID_PROF                                 40000
 #define ID_DUREE                                40001
+#define ID_VERSION                              40001
 #define ID_BT_CALC                              40002
 #define ID_TEXTRESULT                           40003
 #define ID_VDESC                                40004

@@ -134,6 +134,7 @@ void GraphUpdate(HWND hwnd)
   HPEN   hPen,hPenG,hPenR,hPenB,  // Handle to the new pen object
          hOldPen;                 // Handle to the old pen object
   int    index,i;
+  int    x,px=0,y,py=0;
   HGDIOBJ h1,hOld,hOldBrush;
 
   if (!ResultGraph.ok)
@@ -188,23 +189,29 @@ void GraphUpdate(HWND hwnd)
   for (ix=tmp->begin();ix != tmp->end();ix++) {
     toto = *ix;
     // Tracé de la courbe de profondeur
-    DrawSegment(hdc,rect,toto.Temps*10000/ResultGraph.EchX,toto.Profondeur*10000/ResultGraph.EchY);
+    x = toto.Temps*10000/ResultGraph.EchX;
+    y = toto.Profondeur*10000/ResultGraph.EchY;
+    if (x!=px || y!=py) {
+      DrawSegment(hdc,rect,x,y);
+      px=x;
+      py=y;
+    }
   }
 
-  int colpen[12]={
-                  0x00aa00,
-                  0x00bb00,
-                  0x00cc00,
-                  0x00dd00,
-                  0x00ee00,
-                  0x00ff00,
-                  0xaa0000,
-                  0xbb0000,
-                  0xcc0000,
-                  0xdd0000,
-                  0xee0000,
-                  0xff0000
-                 };
+  int colpen[12] = {
+    0x00aa00,
+    0x00bb00,
+    0x00cc00,
+    0x00dd00,
+    0x00ee00,
+    0x00ff00,
+    0xaa0000,
+    0xbb0000,
+    0xcc0000,
+    0xdd0000,
+    0xee0000,
+    0xff0000
+  };
   HPEN tabpen[12];
   hOldPen = (HPEN)SelectObject (hdc, hPenB);
 
@@ -215,11 +222,10 @@ void GraphUpdate(HWND hwnd)
   for (i=0;i<12;i++) {
     MoveToEx (hdc,0,0,NULL);
     SelectObject (hdc, tabpen[i]);
-    int px=0,py=0;
     for (ix=tmp->begin();ix != tmp->end();ix++) {
       toto = *ix;
-      int x=toto.Temps*10000/ResultGraph.EchX;
-      int y=toto.profMin[i]*10000/ResultGraph.EchY;
+      x=toto.Temps*10000/ResultGraph.EchX;
+      y=toto.profMin[i]*10000/ResultGraph.EchY;
       if ((px!=x || py!=y) && (y>0)) {
         // Tracé de la courbe de profondeur
         DrawSegment(hdc,rect,x,y);
