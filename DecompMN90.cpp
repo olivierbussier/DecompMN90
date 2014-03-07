@@ -62,9 +62,11 @@ void StartGraph (void)
   // Determine scale
 
   Graph.EchX = Temps      * 1.05;
+  if (Graph.EchX == Temps) Graph.EchX++;
   Graph.EchY = Profondeur * 1.05;
+  if (Graph.EchY == Profondeur) Graph.EchY++;
 
-  Echelle = Graph.EchX/10;
+  Echelle = Graph.EchX/10.0;
 
   if (Echelle >= 3600)   // 1 Hour
 	Echelle = 3600;
@@ -86,7 +88,7 @@ void StartGraph (void)
 
   Graph.DivX = Echelle;
 
-  Echelle = Graph.EchY/10;
+  Echelle = Graph.EchY/10.0;
 
   if (Echelle >= 100)       // 10 Hour
 	Echelle = 100;
@@ -100,10 +102,8 @@ void StartGraph (void)
     Echelle=5;
   else if (Echelle > 2)    //  1 Min
     Echelle=2;
-  else if (Echelle > 1)    //  1 Min
-    Echelle=1;
   else
-    Echelle=0.5;             // 30 sec
+    Echelle=1;
 
   Graph.DivY = Echelle;
 
