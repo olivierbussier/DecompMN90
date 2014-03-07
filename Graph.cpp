@@ -136,112 +136,129 @@ void GraphUpdate(HWND hwnd)
   int    index,i;
   int    x,px=0,y,py=0;
   HGDIOBJ h1,hOld,hOldBrush;
-
-  if (!ResultGraph.ok)
-    return;
-
+  char buf[1024];
   HDC hdc = BeginPaint(hwnd, &ps);
+  double Pas;
 
   GetClientRect(hwnd,&rect);
 
-  hBrush = CreateSolidBrush (0x0ffeeee);
-  h1 = GetStockObject(BLACK_PEN);
+  hBrush    = CreateSolidBrush (0x0ffeeee);
+  h1        = GetStockObject(BLACK_PEN);
   hOld      = SelectObject (hdc, h1);
   hOldBrush = SelectObject (hdc, hBrush);
+
   Rectangle(hdc,rect.left,rect.top,rect.right-rect.left,rect.bottom-rect.top);
+
+  if (ResultGraph.ok) {
+
+    // Draw X Axes (10% by 10%)
+    // ----------------------
+
+    // Create a dash pen object and select it.
+    hPen = CreatePen (PS_SOLID, 1, 0x000000);
+    hOldPen = (HPEN)SelectObject (hdc, hPen);
+
+    Pas = (10000*ResultGraph.DivX)/ResultGraph.EchX;
+
+    SetBkMode(hdc, TRANSPARENT);
+    for (index=0,i=0;index<10000;index+=Pas,i++) {
+      DrawVLine(hdc,rect,index);
+      // Affichage textes de légende
+      sprintf(buf,"%i",(ResultGraph.DivX*i)/60);
+      TextOut(hdc,((rect.right*index)/10000)+1,rect.bottom-20,buf,strlen(buf));
+    }
+
+    Pas = (10000*ResultGraph.DivY)/ResultGraph.EchY;
+
+    SetBkMode(hdc, TRANSPARENT);
+    for (index=0,i=0;index<10000;index+=Pas,i++) {
+      DrawHLine(hdc,rect,index);
+      // Affichage textes de légende
+      sprintf(buf,"%i",ResultGraph.DivY*i);
+      TextOut(hdc,rect.left+1,((rect.bottom*index)/10000)+1,buf,strlen(buf));
+    }
+
+    // Select the old pen back into the device context.
+    SelectObject (hdc, hOldPen);
+    DeleteObject (hPen);
+
+    // Create a solid pen object and select it.
+
+    hPenR = CreatePen (PS_SOLID, 1, 0x000000FF); // Red
+    hPenG = CreatePen (PS_SOLID, 1, 0x0000FF00); // Green
+    hPenB = CreatePen (PS_SOLID, 1, 0x00FF0000); // Green
+
+    hOldPen = (HPEN)SelectObject (hdc, hPenR);
+
+    MoveToEx (hdc,0,0,NULL);
+
+    // Analyse des points
+
+    std::list<tCaract> *tmp=ResultGraph.G;
+    std::list<tCaract>::iterator ix;
+    tCaract toto;
+
+    for (ix=tmp->begin();ix != tmp->end();ix++) {
+       toto = *ix;
+      // Tracé de la courbe de profondeur
+      x = toto.Temps*10000/ResultGraph.EchX;
+      y = toto.Profondeur*10000/ResultGraph.EchY;
+      if (x!=px || y!=py) {
+        DrawSegment(hdc,rect,x,y);
+        px=x;
+        py=y;
+      }
+    }
+
+    int colpen[12] = {
+      0x00aa00,
+      0x00bb00,
+      0x00cc00,
+      0x00dd00,
+      0x00ee00,
+      0x00ff00,
+      0xaa0000,
+      0xbb0000,
+      0xcc0000,
+      0xdd0000,
+      0xee0000,
+      0xff0000
+    };
+    HPEN tabpen[12];
+    hOldPen = (HPEN)SelectObject (hdc, hPenB);
+
+    for (i=0;i<12;i++) {
+      tabpen[i] = CreatePen(PS_SOLID,1,colpen[i]);
+    }
+
+    for (i=0;i<12;i++) {
+      MoveToEx (hdc,0,0,NULL);
+      SelectObject (hdc, tabpen[i]);
+      for (ix=tmp->begin();ix != tmp->end();ix++) {
+        toto = *ix;
+        x=toto.Temps*10000/ResultGraph.EchX;
+        y=toto.profMin[i]*10000/ResultGraph.EchY;
+        if ((px!=x || py!=y) && (y>0)) {
+          // Tracé de la courbe de profondeur
+          DrawSegment(hdc,rect,x,y);
+          px=x; py=y;
+	    }
+      }
+    }
+
+    // Select the old pen back into the device context.
+    SelectObject (hdc, hOldPen);
+
+    // Delete the pen object and free all resources associated with it.
+    DeleteObject (hPenR);
+    DeleteObject (hPenG);
+
+    // ReleaseDC (hwnd, hdc);
+  }
+
   SelectObject (hdc, hOld);
   SelectObject (hdc, hOldBrush);
   DeleteObject (hBrush);
-
-
-  // Draw X Axes (10% by 10%)
-  // ----------------------
-
-  // Create a dash pen object and select it.
-  hPen = CreatePen (PS_SOLID, 1, 0x000000);
-  hOldPen = (HPEN)SelectObject (hdc, hPen);
-
-  for (index=1;index<10000;index+=1000) {
-    DrawHLine(hdc,rect,index);
-    DrawVLine(hdc,rect,index);
-  }
-
-  // Select the old pen back into the device context.
-  SelectObject (hdc, hOldPen);
-  DeleteObject (hPen);
-
-  // Create a solid pen object and select it.
-
-  hPenR = CreatePen (PS_SOLID, 1, 0x000000FF); // Red
-  hPenG = CreatePen (PS_SOLID, 1, 0x0000FF00); // Green
-  hPenB = CreatePen (PS_SOLID, 1, 0x00FF0000); // Green
-
-  hOldPen = (HPEN)SelectObject (hdc, hPenR);
-
-  MoveToEx (hdc,0,0,NULL);
-
-  // Analyse des points
-
-  std::list<tCaract> *tmp=ResultGraph.G;
-  std::list<tCaract>::iterator ix;
-  tCaract toto;
-
-  for (ix=tmp->begin();ix != tmp->end();ix++) {
-    toto = *ix;
-    // Tracé de la courbe de profondeur
-    x = toto.Temps*10000/ResultGraph.EchX;
-    y = toto.Profondeur*10000/ResultGraph.EchY;
-    if (x!=px || y!=py) {
-      DrawSegment(hdc,rect,x,y);
-      px=x;
-      py=y;
-    }
-  }
-
-  int colpen[12] = {
-    0x00aa00,
-    0x00bb00,
-    0x00cc00,
-    0x00dd00,
-    0x00ee00,
-    0x00ff00,
-    0xaa0000,
-    0xbb0000,
-    0xcc0000,
-    0xdd0000,
-    0xee0000,
-    0xff0000
-  };
-  HPEN tabpen[12];
-  hOldPen = (HPEN)SelectObject (hdc, hPenB);
-
-  for (i=0;i<12;i++) {
-    tabpen[i] = CreatePen(PS_SOLID,1,colpen[i]);
-  }
-
-  for (i=0;i<12;i++) {
-    MoveToEx (hdc,0,0,NULL);
-    SelectObject (hdc, tabpen[i]);
-    for (ix=tmp->begin();ix != tmp->end();ix++) {
-      toto = *ix;
-      x=toto.Temps*10000/ResultGraph.EchX;
-      y=toto.profMin[i]*10000/ResultGraph.EchY;
-      if ((px!=x || py!=y) && (y>0)) {
-        // Tracé de la courbe de profondeur
-        DrawSegment(hdc,rect,x,y);
-        px=x; py=y;
-	  }
-    }
-  }
-
-  // Select the old pen back into the device context.
-  SelectObject (hdc, hOldPen);
-
-  // Delete the pen object and free all resources associated with it.
-  DeleteObject (hPenR);
-  DeleteObject (hPenG);
-
-  // ReleaseDC (hwnd, hdc);
 
   EndPaint(hwnd, &ps);
   // Release the device context.

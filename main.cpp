@@ -9,10 +9,16 @@
 #include "DecompMN90.h"
 
 HINSTANCE hInst;
-char *buffer;
+char *bufstr;
 
 void GraphUpdate(HWND hwnd);
 
+int    GetValueInt(HWND hwndDlg,int ID);
+void   SetValueInt(HWND hwndDlg,int ID, int Value);
+double GetValueFloat(HWND hwndDlg,int ID);
+void   SetValueFloat(HWND hwndDlg,int ID, double Value);
+BOOL   CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
+BOOL   CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 /**************************************************************************/
 int GetValueInt(HWND hwndDlg,int ID)
@@ -150,10 +156,10 @@ BOOL CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             vascp   = GetValueInt  (hwndDlg,ID_VASCP);
             vazotsurf   = GetValueFloat(hwndDlg,ID_VAZOTSURF);
             verbose = (IsDlgButtonChecked  (hwndDlg,ID_VERBOSE)==BST_CHECKED);
-            buffer  = Decomp(Prof,Duree,verbose,vdesc,vasca,vascp,vazotsurf);
+            bufstr  = Decomp(Prof,Duree,verbose,vdesc,vasca,vascp,vazotsurf);
             hwndtemp= GetDlgItem (hwndDlg,ID_TEXTRESULT);
-            SetWindowText(hwndtemp,buffer);
-            strend(buffer);
+            SetWindowText(hwndtemp,bufstr);
+            strend(bufstr);
             break;
           case ID_HELP_ABOUT:
             DialogBox(GetModuleHandle(NULL),MAKEINTRESOURCE(DLG_ABOUT), hwndDlg, AboutDlgProc);
@@ -174,6 +180,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     InitCommonControls();
 
-    buffer=(char *)malloc(100000);
+    bufstr=(char *)malloc(100000);
     return DialogBox(hInst, MAKEINTRESOURCE(DLG_MAIN), NULL, (DLGPROC)DlgMain);
 }

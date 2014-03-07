@@ -1,3 +1,5 @@
+#include <math.h>
+
 typedef struct {
     double N2_A;
     double N2_B;
@@ -29,7 +31,8 @@ BuhlmannParams  bpars[] = {
 };
 
 /*
-P = Pio + R(t – 1/k) – [Pio – Po – (R/k)]e-kt
+
+P_Cf=P_io+R[T-1/k]+[P_io-P_o-R/k][1-e^(-kT) ]
 
 # Pio = pression initiale du gaz inerte respiré (alvéolaire) moins la vapeur d’eau
 # P0 = pression du gaz inerte présente au départ dans le compartiment
@@ -41,3 +44,17 @@ c’est simplement le taux de descente ou remontée multiplié par le pourcentage de
 remarque : quand R (ou c) vaut zéro, l’équation ci-dessus revient à l’équation instantanée familière de la
 forme : P = P0 + (Pi – P0) ( 1 – e-kt)
 */
+int CalcSaturationBuhl(double po,double ProfDepart,double ProfArrivee,int Temps/*, std::list<tCaract>DiveParms*/)
+{
+  double k[17];
+  int i;
+  double R=0.79*((ProfArrivee - ProfDepart)/Temps);
+  double pio=((ProfDepart/10)+1)*0.79;
+  double pcf[17];
+
+  for (i=0;i<17;i++)
+    k[i] = log(2.0)/bpars[i].N2_HalfLife;
+
+  for (i=0;i<17;i++)
+    pcf[i] = pio+R*(Temps-(1.0/k[i]))+(pio-po-R/k[i])*(1-exp(-k[i]*Temps));
+}

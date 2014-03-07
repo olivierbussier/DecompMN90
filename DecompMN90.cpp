@@ -39,7 +39,7 @@ void StartGraph (void)
 /*******************************************************************************************/
 {
   tCaract tmp;
-  double Profondeur=-1,Temps=-1;
+  double Profondeur=-1,Temps=-1,Echelle;
   //int ProfLigne, TempsLigne;
   std::list<tCaract>::iterator it;
   tGraph Graph;
@@ -59,14 +59,53 @@ void StartGraph (void)
   if (Temps<0 || Profondeur<0)
     return;
 
-  Graph.EchX = Temps      + (Temps     *10/100);
-  Graph.EchY = Profondeur + (Profondeur* 5/100);
+  // Determine scale
+
+  Graph.EchX = Temps      * 1.05;
+  Graph.EchY = Profondeur * 1.05;
+
+  Echelle = Graph.EchX/10;
+
+  if (Echelle >= 3600)   // 1 Hour
+	Echelle = 3600;
+  else if (Echelle >= 1800) //  30mn Hour
+	Echelle=1800;
+  else if (Echelle > 600)  // 10 mn
+	Echelle=600;
+  else if (Echelle > 300)   // 5 Min
+    Echelle=300;
+  else if (Echelle > 120)   //  2 Min
+    Echelle=120;
+  else if (Echelle > 60)    //  1 Min
+    Echelle=60;
+  else
+    Echelle=30;             // 30 sec
 
   // --- Construction des Lignes ---
   // Principe : environ 10 lignes verticales
 
-  Graph.DivX = ((int)(Temps/10)/5)*5;      // Et réajustement en multiples de 5
-  Graph.DivY = ((int)(Profondeur/10)/5)*5;
+  Graph.DivX = Echelle;
+
+  Echelle = Graph.EchY/10;
+
+  if (Echelle >= 100)       // 10 Hour
+	Echelle = 100;
+  else if (Echelle >= 50) //  1 Hour
+	Echelle=50;
+  else if (Echelle > 20)  // 30 mn
+	Echelle=20;
+  else if (Echelle > 10)   // 10 Min
+    Echelle=10;
+  else if (Echelle > 5)   //  5 Min
+    Echelle=5;
+  else if (Echelle > 2)    //  1 Min
+    Echelle=2;
+  else if (Echelle > 1)    //  1 Min
+    Echelle=1;
+  else
+    Echelle=0.5;             // 30 sec
+
+  Graph.DivY = Echelle;
 
   Graph.G = &DiveParms;
   SetParmsGraph(&Graph);
