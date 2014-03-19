@@ -31,15 +31,84 @@ int Prof2Palier(double ProfActuelle);
 void SetParmsGraph(tGraph *tmp);
 void StartGraph (void);
 int CalcSaturation(double ProfDepart,double ProfArrivee,int Temps/*, std::list<tCaract>DiveParms*/);
+void SetEchelle (tGraph &Graph,double EchelleX, int nbDivX, double EchelleY, int nbDivY);
 
 std::list<tCaract> DiveParms;
+
+/*******************************************************************************************/
+void SetEchelle (tGraph *Graph,double EchelleX, int nbDivX, double EchelleY, int nbDivY)
+/*******************************************************************************************/
+{
+  double Echelle;
+
+  // Determine scale
+
+  Graph->EchX = EchelleX;
+  Graph->EchY = EchelleY;
+
+  Echelle = Graph->EchX/(double)nbDivX;
+
+  if (Echelle >= 36000)      // 10 Hour
+	Echelle = 36000;
+  else if (Echelle >= 18000) // 5 Hour
+	Echelle = 18000;
+  else if (Echelle >= 7200)  // 2 Hour
+	Echelle = 7200;
+  else if (Echelle >= 3600)  // 1 Hour
+	Echelle = 3600;
+  else if (Echelle >= 1800)  // 30 mn
+	Echelle=1800;
+  else if (Echelle > 600)    // 10 mn
+	Echelle=600;
+  else if (Echelle > 300)    // 5 Min
+    Echelle=300;
+  else if (Echelle > 120)    // 2 Min
+    Echelle=120;
+  else if (Echelle > 60)     // 1 Min
+    Echelle=60;
+  else
+    Echelle=30;              // 30 sec
+
+  // --- Construction des Lignes ---
+  // Principe : environ 10 lignes verticales
+
+  Graph->DivX = Echelle;
+  Graph->UnitX=(char *)"mn";
+
+  Echelle = Graph->EchY/nbDivY;
+
+  if (Echelle >= 1000)      // 1000m
+	Echelle = 1000;
+  else if (Echelle >= 500)       // 500m
+	Echelle = 500;
+  else if (Echelle >= 200)  // 200m
+	Echelle = 200;
+  else if (Echelle >= 100)  // 100m
+	Echelle = 100;
+  else if (Echelle >= 50)   // 50m
+	Echelle=50;
+  else if (Echelle > 20)    // 20m
+	Echelle=20;
+  else if (Echelle > 10)    // 10m
+    Echelle=10;
+  else if (Echelle > 5)     //  5m
+    Echelle=5;
+  else if (Echelle > 2)     //  2m
+    Echelle=2;
+  else
+    Echelle=1;              // 1m
+
+  Graph->DivY = Echelle;
+  Graph->UnitY=(char *)"m";
+
+}
 
 /*******************************************************************************************/
 void StartGraph (void)
 /*******************************************************************************************/
 {
   tCaract tmp;
-  double Profondeur=-1,Temps=-1,Echelle;
+  double Profondeur=-1,pp=-1,Temps=-1,pt=-1;
   //int ProfLigne, TempsLigne;
   std::list<tCaract>::iterator it;
   tGraph Graph;
@@ -52,60 +121,19 @@ void StartGraph (void)
   Temps = tmp.Temps;
 
   // --- Construction des echelles ---
-  // 5% a gauche et 5% a droite ----
+  // 5% a droite ----
   // 5%m en dessous
   // ---------------------------------
 
   if (Temps<0 || Profondeur<0)
     return;
 
-  // Determine scale
+  pt = Temps      * 1.05;
+  if (pt == Temps)      pt++;
+  pp = Profondeur * 1.05;
+  if (pp == Profondeur) pp++;
 
-  Graph.EchX = Temps      * 1.05;
-  if (Graph.EchX == Temps) Graph.EchX++;
-  Graph.EchY = Profondeur * 1.05;
-  if (Graph.EchY == Profondeur) Graph.EchY++;
-
-  Echelle = Graph.EchX/10.0;
-
-  if (Echelle >= 3600)   // 1 Hour
-	Echelle = 3600;
-  else if (Echelle >= 1800) //  30mn Hour
-	Echelle=1800;
-  else if (Echelle > 600)  // 10 mn
-	Echelle=600;
-  else if (Echelle > 300)   // 5 Min
-    Echelle=300;
-  else if (Echelle > 120)   //  2 Min
-    Echelle=120;
-  else if (Echelle > 60)    //  1 Min
-    Echelle=60;
-  else
-    Echelle=30;             // 30 sec
-
-  // --- Construction des Lignes ---
-  // Principe : environ 10 lignes verticales
-
-  Graph.DivX = Echelle;
-
-  Echelle = Graph.EchY/10.0;
-
-  if (Echelle >= 100)       // 10 Hour
-	Echelle = 100;
-  else if (Echelle >= 50) //  1 Hour
-	Echelle=50;
-  else if (Echelle > 20)  // 30 mn
-	Echelle=20;
-  else if (Echelle > 10)   // 10 Min
-    Echelle=10;
-  else if (Echelle > 5)   //  5 Min
-    Echelle=5;
-  else if (Echelle > 2)    //  1 Min
-    Echelle=2;
-  else
-    Echelle=1;
-
-  Graph.DivY = Echelle;
+  SetEchelle(&Graph,pt,10,pp,10);
 
   Graph.G = &DiveParms;
   SetParmsGraph(&Graph);
@@ -280,8 +308,8 @@ int CalcSaturation(double ProfDepart,double ProfArrivee,int Temps/*, std::list<t
 #define PAS_T  1  // En secondes
 
   int    Duree = 0;                                   // Duree est exprimée en secondes
-  double PasV  = ((ProfArrivee-ProfDepart)/Temps)*PAS_T;  // Le pas est la distance parcourue en 1s
-  int    PasT  = PAS_T;
+  double PasV;
+  int    PasT = PAS_T;
   int i,prf;
   double ProfActuelle = ProfDepart;
   double ProfFinale   = ProfDepart+PasV;
@@ -291,6 +319,9 @@ int CalcSaturation(double ProfDepart,double ProfArrivee,int Temps/*, std::list<t
   // Le principe est de vérifier a chaque pas qu'il y a
   // ou pas un palier a faire a ce niveau
   // --------------------------------------------------
+
+  if (Temps>0)
+    PasV = ((ProfArrivee-ProfDepart)/Temps)*PAS_T;  // Le pas est la distance parcourue en 1s
 
   while (Duree<Temps) {
 
@@ -334,7 +365,7 @@ int CalcSaturation(double ProfDepart,double ProfArrivee,int Temps/*, std::list<t
 }
 
 /*******************************************************************************************/
-char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,int vMontP,double pAzote)
+int Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA,int vMontP,double pAzote)
 /*******************************************************************************************/
 {
   double ppN2s=pAzote;
@@ -343,7 +374,6 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
   tCaract Palier;
   int DureeRemont;
   int NextPalier, ProfPalier;
-  char *buffer;
 
   int TempsPalier;
   int TempsSec      = Temps*60;
@@ -351,16 +381,23 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
 
   // init des pressions d'azote de départ
 
+  strinit();
+
+  if (ProfReelle==0 || Temps == 0) {
+    str ("Paramètres invalides\r\n");
+    return 0;
+  }
+
   DiveParms.clear();
 
-  buffer = strinit();
-  buffer = str (buffer, "Paramètres:\r\n");
-  buffer = str (buffer," - Profondeur = %6.2fm, Durée = %6.2fmn\r\n",ProfReelle,Temps);
-  buffer = str (buffer," - Pression Azote en surface = %5.3f\r\n",pAzote);
-  buffer = str (buffer," - Vitesse de Descente = %im/mn\r\n",vDesc);
-  buffer = str (buffer," - Vitesse Remontee avant paliers = %im/mn\r\n",vMontA);
-  buffer = str (buffer," - Vitesse Remontee pendant les paliers = %im/mn\r\n",vMontP);
-  buffer = str (buffer,"----------------------------------------------------------------------------\r\n");
+  str ("Paramètres:\r\n");
+  str (" - Profondeur  = %6.2fm\r\n",ProfReelle,Temps);
+  str (" - Durée       = %6.2fmn\r\n",Temps);
+  str (" - PN2 surface = %6.3f\r\n",pAzote);
+  str (" - V Descente  = %3im/mn\r\n",vDesc);
+  str (" - V Rem fond  = %3im/mn\r\n",vMontA);
+  str (" - V paliers   = %3im/mn\r\n",vMontP);
+  str ("-----------------------------------------------------------------------\r\n");
 
   for (i=0;i<(int)nbcompart;i++) {
     // Palier[pt].sc      [i]=0;        // Sursat du compartiment
@@ -416,15 +453,15 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
     if (NextPalier==ProfPalier) {
       // Palier confirmé
       //int TempsMinutes = (int)ceil((double)TempsPalier/60.);
-      buffer = str (buffer,"Palier : %imn a %.2im\r\n",(int)ceil((double)TempsPalier/60),ProfPalier);
-      buffer = str (buffer,"  DTR:%is, %6.2fmn->%i\r\n",DTR, ((double)TempsPalier)/60.0,(int)ceil(TempsPalier/60.0));
+      str ("Palier : %imn a %.2im\r\n",(int)ceil((double)TempsPalier/60),ProfPalier);
+      str ("  DTR:%is, %6.2fmn->%i\r\n",DTR, ((double)TempsPalier)/60.0,(int)ceil(TempsPalier/60.0));
       if (Verbose)
         for (int x=0;x<(int)nbcompart;x++) {
           if (x==td)
-            buffer = str(buffer," ->");
+            str(" ->");
           else
-            buffer = str(buffer," - ");
-          buffer = str (buffer,"C%3imn: Min=%6.2fm, pMN90=%2im, T=%4is/%5.1fmn\r\n",periode[x],Palier.profMin[x],Palier.profMN90[x],Palier.DureePalier[x],ceil((double)Palier.DureePalier[x]/60));
+            str(" - ");
+          str ("C%3imn: Min=%6.2fm, pMN90=%2im, T=%4is/%5.1fmn\r\n",periode[x],Palier.profMin[x],Palier.profMN90[x],Palier.DureePalier[x],ceil((double)Palier.DureePalier[x]/60));
         }
       td = CalcSaturation(ProfPalier,ProfPalier,TempsPalier/*, DiveParms*/);
       Palier=DiveParms.back();
@@ -455,9 +492,118 @@ char *Decomp (double ProfReelle, double Temps,int Verbose, int vDesc, int vMontA
       ProfPalier=NextPalier;
     }
   } while(ProfPalier>0);
-  buffer = str (buffer,"DTR = %4.1fmn\r\n",ceil(DTR/60.0));
-  buffer = str (buffer,"Azote résiduel C120 = %fmn\r\n",Palier.tn2[C120]);
-  buffer = str (buffer," -> GPS = %s\r\n",Groupe(Palier.tn2[C120]));
+  str ("DTR = %4.1fmn\r\n",ceil(DTR/60.0));
+  str ("Azote résiduel C120 = %fmn\r\n",Palier.tn2[C120]);
+  str (" -> GPS = %s\r\n",Groupe(Palier.tn2[C120]));
   StartGraph();
-  return buffer;
+  return 1;
+}
+
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+int imbric=-1;
+
+/*******************************************************************************************/
+const xmlChar *GetAttrValue(xmlAttr *x)
+/*******************************************************************************************/
+{
+  if (x->children!=NULL)
+    return x->children->content;
+  else
+    return (xmlChar *)"";
+}
+
+/*******************************************************************************************/
+static void ExploreDive(xmlNode *a_node)
+/*******************************************************************************************/
+{
+  xmlNode *cur_node = NULL;
+  xmlAttr *cur_attr = NULL;
+  char *p;
+  double Time,tp=0;
+  double Prof;
+  int minut,secs;
+  double CurProf=0;
+
+  imbric++;
+
+  for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
+    if (strcmp((char *)cur_node->name,"sample")==0) {
+      cur_attr = cur_node->properties;
+      p=(char *)GetAttrValue(cur_attr);
+      sscanf(p,"%i:%i min",&minut,&secs);
+      Time = minut*60+secs;
+      cur_attr = cur_attr->next;
+      p=(char *)GetAttrValue(cur_attr);
+      Prof = atof(p);
+      CalcSaturation(CurProf,Prof,Time-tp);
+      CurProf=Prof;
+      tp=Time;
+    }
+    if (cur_node->children)
+      ExploreDive(cur_node->children);
+  }
+  imbric--;
+}
+
+/*******************************************************************************************/
+int DiveXML (char *filename,int Verbose,double pAzote)
+/*******************************************************************************************/
+{
+  //double ppN2s=pAzote;
+  int i;
+  //double ProfFict = 0; //ProfReelle*(AzotSurf/ppN2s); // profondeur fictive (prof equivalent Azone et altitude
+  tCaract Palier;
+  xmlDoc *doc = NULL;
+  xmlNode *root_element = NULL;
+
+  DiveParms.clear();
+
+  strinit();
+  str ("Paramètres:\r\n");
+  str (" - fichier     = %s\r\n",filename);
+  str (" - PN2 surface = %6.3f\r\n",pAzote);
+  str ("--------------------------------------\r\n");
+
+  for (i=0;i<(int)nbcompart;i++) {
+    // Palier[pt].sc      [i]=0;  // Sursat du compartiment
+    Palier.tn2     [i]=AzotSurf;  // Tension d'azote du tissu i en fin de niveau j
+    Palier.profMin [i]=0;
+    Palier.DureePalier[i]=0;
+    //Palier[pt].ppalier [i]=0;   // Profondeur 1er palier pour le compartiment i avant remontée
+  }
+  Palier.Profondeur=0;
+  Palier.Temps     =0;
+  DiveParms.push_back(Palier);
+
+  // ------------------------------------------------------
+  // Lecture XML
+
+  LIBXML_TEST_VERSION
+
+  /*parse the file and get the DOM */
+
+  doc = xmlReadFile(filename, NULL, XML_PARSE_NOBLANKS);
+
+  if (doc == NULL) {
+    str("error: could not parse file %s\n", filename);
+    return 0;
+  }
+
+  // Get the root element node
+
+  //xmlNode *cur_node = NULL;
+  //xmlAttr *cur_attr = NULL;
+
+  root_element = xmlDocGetRootElement(doc);
+
+  ExploreDive(root_element);
+
+  // init des pressions d'azote de départ
+
+  //buffer = str (buffer,"DTR = %4.1fmn\r\n",ceil(DTR/60.0));
+  //buffer = str (buffer,"Azote résiduel C120 = %fmn\r\n",Palier.tn2[C120]);
+  //buffer = str (buffer," -> GPS = %s\r\n",Groupe(Palier.tn2[C120]));
+  StartGraph();
+  return 1;
 }

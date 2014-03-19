@@ -1,9 +1,10 @@
 #ifndef UTIL_H_INCLUDED
 #define UTIL_H_INCLUDED
 
-char *strinit(void);
-char *str    (char *buffer, const char *format, ...);
-void  strend (char *buffer);
+void strinit(void);
+char *strget(void);
+void str    (const char *format, ...);
+void strend (void);
 
 #define VERBOSE if (Verbose) printf
 

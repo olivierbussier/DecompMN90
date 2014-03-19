@@ -6,17 +6,27 @@
 #include "uutil.h"
 #include "ualloc.h"
 
+// Globals
+
+char *BufStr=NULL;
+
 /*******************************************************************************************/
-char *strinit (void)
+void strinit (void)
 /*******************************************************************************************/
 {
-  char *tmp=(char *)Alloc(1);
-  *tmp=0;
-  return tmp;
+  BufStr=(char *)Alloc(1);
+  *BufStr=0;
 }
 
 /*******************************************************************************************/
-char *str (char *buffer, const char *format, ...)
+char *strget (void)
+/*******************************************************************************************/
+{
+  return BufStr;
+}
+
+/*******************************************************************************************/
+void str (const char *format, ...)
 /*******************************************************************************************/
 {
   va_list args;
@@ -26,15 +36,17 @@ char *str (char *buffer, const char *format, ...)
   va_start (args, format);
   len = vsprintf (tempstring,format, args);
   va_end (args);
-  buffer = (char *)Realloc(buffer,strlen(buffer)+len+1);
-  strcat(buffer,tempstring);
+  BufStr = (char *)Realloc(BufStr,strlen(BufStr)+len+1);
+  strcat(BufStr,tempstring);
   Free(tempstring);
-  return buffer;
 }
 
 /*******************************************************************************************/
-void strend (char *buffer)
+void strend (void)
 /*******************************************************************************************/
 {
-  Free(buffer);
+  if (BufStr!=NULL) {
+    Free(BufStr);
+    BufStr=NULL;
+  }
 }

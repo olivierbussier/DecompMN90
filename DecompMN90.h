@@ -44,13 +44,15 @@ struct tCaract {
 struct tGraph {
   int EchX,EchY;
   int DivX,DivY;
+  char *UnitX,*UnitY;
   bool ok;
   std::list<tCaract> *G;
 };
 
-char  *Decomp     (double ProfReelle, double temps,int Verbose, int vDesc, int vMontA,int vMontP,double pAzote);
-int    CalcSaturation(double ProfDepart,double ProfArrivee,int Temps, tCaract *Caract);
-int    RechercheDirecteur(tCaract *Caract);
+int  Decomp     (double ProfReelle, double temps,int Verbose, int vDesc, int vMontA,int vMontP,double pAzote);
+int  CalcSaturation(double ProfDepart,double ProfArrivee,int Temps, tCaract *Caract);
+int  RechercheDirecteur(tCaract *Caract);
+int  DiveXML (char *filename,int Verbose,double pAzote);
 
 #define nbpaliers   5
 #define VIT_REMONT 17

@@ -16,6 +16,10 @@
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 IDR_MENU1 MENU
 {
+    POPUP "FIle"
+    {
+        MENUITEM "Open dive", ID_OPEN_DIVE
+    }
     POPUP "Help"
     {
         MENUITEM "About MN90", ID_HELP_ABOUT

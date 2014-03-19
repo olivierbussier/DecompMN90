@@ -5,6 +5,7 @@
 #define IDI_ICONAPPLI                           1
 #define IDR_MENU1                               101
 #define ID_HELP_ABOUT                           102
+#define ID_OPEN_DIVE                            103
 #define DLG_MAIN                                110
 #define DLG_ABOUT                               111
 #define ID_PROF                                 40000

@@ -6,21 +6,10 @@
 #include <stdio.h>
 #include "resource.h"
 #include "DecompMN90.h"
-
-#define MAX_LOADSTRING     100
-#define ID_TIMER WM_USER + 300
-
-//Menu Bar Height
-#define MENU_HEIGHT 26
+#include "Graph.h"
 
 // Global Variables:
-TCHAR		szTitle[MAX_LOADSTRING];		// The title bar text
-TCHAR		szWindowClass[MAX_LOADSTRING];	// The window class name
-HWND        GraphHwnd=0;
-
-int ElapsedTime=0;
-
-#define BATTERYGRAPHCLASS       TEXT("BatteryGraph")
+HWND GraphHwnd=0;
 
 tGraph ResultGraph;
   //int EchX,EchY;
@@ -28,16 +17,6 @@ tGraph ResultGraph;
   //bool ok;
   //std::list<tCaract> *G;
 
-void SetParmsGraph(tGraph *tmp);
-LRESULT CALLBACK BatteryGraphWndProc(HWND hwnd, UINT msg, WPARAM wParam,LPARAM lParam);
-ATOM BatteryGraphRegisterClass (HINSTANCE hInstance);
-
-void DrawHLine(HDC hdc, RECT rect, int PosY);
-void DrawVLine(HDC hdc, RECT rect, int PosX);
-void DrawSegment(HDC hdc, RECT rect, int PosX,int PosY);
-void SecondsToString(int temp,TCHAR *szBufW);
-void DrawControls(HWND hwnd);
-void GraphUpdate(HWND hwnd);
 
 /********************************************************************/
 void SetParmsGraph(tGraph *tmp)
@@ -118,7 +97,7 @@ void DrawVLine(HDC hdc, RECT rect, int PosX)
 }
 
 /********************************************************************/
-void DrawSegment(HDC hdc, RECT rect, int PosX,int PosY)
+inline void DrawSegment(HDC hdc, RECT rect, int PosX,int PosY)
 /********************************************************************/
 {
   LineTo   (hdc,(rect.right*PosX)/10000,(rect.bottom*PosY)/10000);
@@ -130,21 +109,25 @@ void GraphUpdate(HWND hwnd)
 {
   PAINTSTRUCT    ps;
   RECT   rect;
-  HBRUSH hBrush; //,hOldBrush;
-  HPEN   hPen,hPenG,hPenR,hPenB,  // Handle to the new pen object
-         hOldPen;                 // Handle to the old pen object
+  HBRUSH hBrush;
+  HPEN   hPen;
+  HPEN   hPenG,hPenR,hPenB;  // Handle to the new pen object
+  HPEN   hOldPen;                    // Handle to the old pen object
   int    index,i;
   int    x,px=0,y,py=0;
   HGDIOBJ h1,hOld,hOldBrush;
   char buf[1024];
-  HDC hdc = BeginPaint(hwnd, &ps);
+  HDC hdc;
   double Pas;
+
+  hdc = BeginPaint(hwnd, &ps);
 
   GetClientRect(hwnd,&rect);
 
-  hBrush    = CreateSolidBrush (0x0ffeeee);
   h1        = GetStockObject(BLACK_PEN);
   hOld      = SelectObject (hdc, h1);
+
+  hBrush    = CreateSolidBrush (0x0ffeeee);
   hOldBrush = SelectObject (hdc, hBrush);
 
   Rectangle(hdc,rect.left,rect.top,rect.right-rect.left,rect.bottom-rect.top);
@@ -164,7 +147,7 @@ void GraphUpdate(HWND hwnd)
     for (index=0,i=0;index<10000;index+=Pas,i++) {
       DrawVLine(hdc,rect,index);
       // Affichage textes de légende
-      sprintf(buf,"%i",(ResultGraph.DivX*i)/60);
+      sprintf(buf,"%i%s",(ResultGraph.DivX*i)/60,ResultGraph.UnitX);
       TextOut(hdc,((rect.right*index)/10000)+1,rect.bottom-20,buf,strlen(buf));
     }
 
@@ -174,7 +157,7 @@ void GraphUpdate(HWND hwnd)
     for (index=0,i=0;index<10000;index+=Pas,i++) {
       DrawHLine(hdc,rect,index);
       // Affichage textes de légende
-      sprintf(buf,"%i",ResultGraph.DivY*i);
+      sprintf(buf,"%i%s",ResultGraph.DivY*i,ResultGraph.UnitY);
       TextOut(hdc,rect.left+1,((rect.bottom*index)/10000)+1,buf,strlen(buf));
     }
 

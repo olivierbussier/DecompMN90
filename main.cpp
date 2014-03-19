@@ -7,11 +7,10 @@
 #include "version.h"
 
 #include "DecompMN90.h"
+#include "Graph.h"
 
 HINSTANCE hInst;
 char *bufstr;
-
-void GraphUpdate(HWND hwnd);
 
 int    GetValueInt(HWND hwndDlg,int ID);
 void   SetValueInt(HWND hwndDlg,int ID, int Value);
@@ -19,6 +18,7 @@ double GetValueFloat(HWND hwndDlg,int ID);
 void   SetValueFloat(HWND hwndDlg,int ID, double Value);
 BOOL   CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
 BOOL   CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
 
 /**************************************************************************/
 int GetValueInt(HWND hwndDlg,int ID)
@@ -61,32 +61,6 @@ void SetValueFloat(HWND hwndDlg,int ID, double Value)
   sprintf (result,"%6.4f",Value);
   SetWindowText(GetDlgItem (hwndDlg,ID),result);
 }
-/*
-	//Date Version Types
-	static const char DATE[] = "04";
-	static const char MONTH[] = "03";
-	static const char YEAR[] = "2014";
-	static const char UBUNTU_VERSION_STYLE[] =  "14.03";
-
-	//Software Status
-	static const char STATUS[] =  "Alpha";
-	static const char STATUS_SHORT[] =  "a";
-
-	//Standard Version Type
-	static const long MAJOR  = 0;
-	static const long MINOR  = 4;
-	static const long BUILD  = 9;
-	static const long REVISION  = 42;
-
-	//Miscellaneous Version Types
-	static const long BUILDS_COUNT  = 21;
-	#define RC_FILEVERSION 0,4,9,42
-	#define RC_FILEVERSION_STRING "0, 4, 9, 42\0"
-	static const char FULLVERSION_STRING [] = "0.4.9.42";
-
-	//These values are to keep track of your versioning state, don't modify them.
-	static const long BUILD_HISTORY  = 9;
-*/
 
 /**************************************************************************/
 BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
@@ -126,15 +100,14 @@ BOOL CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     HWND hwndtemp;
     HFONT hFont;
     double Prof,Duree,vazotsurf;
-    int vdesc,vasca,vascp,verbose;
+    int vdesc,vasca,vascp,verbose,result;
 
     switch(uMsg) {
       case WM_INITDIALOG:
-        SetValueInt  (hwndDlg,ID_VDESC , 20);
+        SetValueInt  (hwndDlg,ID_VDESC , 20000);
         SetValueInt  (hwndDlg,ID_VASCA , 15);
         SetValueInt  (hwndDlg,ID_VASCP,   6);
         SetValueFloat(hwndDlg,ID_VAZOTSURF,0.7808);
-
         // Set the font for EDIT
         hFont=CreateFont(14, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,DEFAULT_PITCH | FF_SWISS, "Courier New");
         // Set the new font for the control:
@@ -156,13 +129,51 @@ BOOL CALLBACK DlgMain(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             vascp   = GetValueInt  (hwndDlg,ID_VASCP);
             vazotsurf   = GetValueFloat(hwndDlg,ID_VAZOTSURF);
             verbose = (IsDlgButtonChecked  (hwndDlg,ID_VERBOSE)==BST_CHECKED);
-            bufstr  = Decomp(Prof,Duree,verbose,vdesc,vasca,vascp,vazotsurf);
+            result  = Decomp(Prof,Duree,verbose,vdesc,vasca,vascp,vazotsurf);
             hwndtemp= GetDlgItem (hwndDlg,ID_TEXTRESULT);
+            bufstr  = strget();
             SetWindowText(hwndtemp,bufstr);
-            strend(bufstr);
+            strend();
             break;
           case ID_HELP_ABOUT:
             DialogBox(GetModuleHandle(NULL),MAKEINTRESOURCE(DLG_ABOUT), hwndDlg, AboutDlgProc);
+            break;
+          case ID_OPEN_DIVE:
+            OPENFILENAME ofn;       // common dialog box structure
+            char szFile[512];
+            //HANDLE hf;
+
+            // Initialize OPENFILENAME
+            ZeroMemory(&ofn, sizeof(ofn));
+            ofn.lStructSize = sizeof(ofn);
+            ofn.hwndOwner = hwndDlg;
+            ofn.lpstrFile = szFile;
+            // Set lpstrFile[0] to '\0' so that GetOpenFileName does not
+            // use the contents of szFile to initialize itself.
+            ofn.lpstrFile[0] = '\0';
+            ofn.nMaxFile = sizeof(szFile);
+            ofn.lpstrFilter = "xml files\0*.xml\0text files\0*.txt\0";
+            ofn.nFilterIndex = 1;
+            ofn.lpstrFileTitle = NULL;
+            ofn.nMaxFileTitle = 0;
+            ofn.lpstrInitialDir = NULL;
+            ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+// Display the Open dialog box.
+
+            result = GetOpenFileName(&ofn);
+            if(!result)
+              break;
+            vazotsurf   = GetValueFloat(hwndDlg,ID_VAZOTSURF);
+            verbose = (IsDlgButtonChecked  (hwndDlg,ID_VERBOSE)==BST_CHECKED);
+            // Lecture XML
+            result = DiveXML(ofn.lpstrFile,verbose,vazotsurf);
+            if (!result)
+              break;
+            hwndtemp= GetDlgItem (hwndDlg,ID_TEXTRESULT);
+            bufstr  = strget();
+            SetWindowText(hwndtemp,bufstr);
+            strend();
             break;
         }
         return TRUE;

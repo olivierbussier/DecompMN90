@@ -2,4 +2,7 @@
 *.layout
 # ignore all files in the build/ directory
 obj/
+libxml/
+zlib*/
+iconv/
 bin/

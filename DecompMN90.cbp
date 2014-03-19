@@ -6,6 +6,7 @@
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
+			<Script file="lib_finder.script" />
 			<Target title="Debug">
 				<Option output="bin/Debug/Decomp" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Debug/" />
@@ -14,6 +15,9 @@
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
+				<Linker>
+					<Add library="comdlg32" />
+				</Linker>
 			</Target>
 			<Target title="Release">
 				<Option output="bin/Release/Decomp" prefix_auto="1" extension_auto="1" />
@@ -30,17 +34,68 @@
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
+			<Add directory="libxml/include" />
+			<Add directory="iconv/include" />
 		</Compiler>
 		<Linker>
 			<Add library="gdi32" />
 			<Add library="user32" />
 			<Add library="kernel32" />
 			<Add library="comctl32" />
+			<Add library="libxml\lib\libxml2.lib" />
 		</Linker>
 		<Unit filename="DecompBuhlmann.cpp" />
 		<Unit filename="DecompMN90.cpp" />
 		<Unit filename="DecompMN90.h" />
 		<Unit filename="Graph.cpp" />
+		<Unit filename="Graph.h" />
+		<Unit filename="libxml/include/libxml/DOCBparser.h" />
+		<Unit filename="libxml/include/libxml/HTMLparser.h" />
+		<Unit filename="libxml/include/libxml/HTMLtree.h" />
+		<Unit filename="libxml/include/libxml/SAX.h" />
+		<Unit filename="libxml/include/libxml/SAX2.h" />
+		<Unit filename="libxml/include/libxml/c14n.h" />
+		<Unit filename="libxml/include/libxml/catalog.h" />
+		<Unit filename="libxml/include/libxml/chvalid.h" />
+		<Unit filename="libxml/include/libxml/debugXML.h" />
+		<Unit filename="libxml/include/libxml/dict.h" />
+		<Unit filename="libxml/include/libxml/encoding.h" />
+		<Unit filename="libxml/include/libxml/entities.h" />
+		<Unit filename="libxml/include/libxml/globals.h" />
+		<Unit filename="libxml/include/libxml/hash.h" />
+		<Unit filename="libxml/include/libxml/list.h" />
+		<Unit filename="libxml/include/libxml/nanoftp.h" />
+		<Unit filename="libxml/include/libxml/nanohttp.h" />
+		<Unit filename="libxml/include/libxml/parser.h" />
+		<Unit filename="libxml/include/libxml/parserInternals.h" />
+		<Unit filename="libxml/include/libxml/pattern.h" />
+		<Unit filename="libxml/include/libxml/relaxng.h" />
+		<Unit filename="libxml/include/libxml/schemasInternals.h" />
+		<Unit filename="libxml/include/libxml/schematron.h" />
+		<Unit filename="libxml/include/libxml/threads.h" />
+		<Unit filename="libxml/include/libxml/tree.h" />
+		<Unit filename="libxml/include/libxml/uri.h" />
+		<Unit filename="libxml/include/libxml/valid.h" />
+		<Unit filename="libxml/include/libxml/xinclude.h" />
+		<Unit filename="libxml/include/libxml/xlink.h" />
+		<Unit filename="libxml/include/libxml/xmlIO.h" />
+		<Unit filename="libxml/include/libxml/xmlautomata.h" />
+		<Unit filename="libxml/include/libxml/xmlerror.h" />
+		<Unit filename="libxml/include/libxml/xmlexports.h" />
+		<Unit filename="libxml/include/libxml/xmlmemory.h" />
+		<Unit filename="libxml/include/libxml/xmlmodule.h" />
+		<Unit filename="libxml/include/libxml/xmlreader.h" />
+		<Unit filename="libxml/include/libxml/xmlregexp.h" />
+		<Unit filename="libxml/include/libxml/xmlsave.h" />
+		<Unit filename="libxml/include/libxml/xmlschemas.h" />
+		<Unit filename="libxml/include/libxml/xmlschemastypes.h" />
+		<Unit filename="libxml/include/libxml/xmlstring.h" />
+		<Unit filename="libxml/include/libxml/xmlunicode.h" />
+		<Unit filename="libxml/include/libxml/xmlversion.h" />
+		<Unit filename="libxml/include/libxml/xmlwriter.h" />
+		<Unit filename="libxml/include/libxml/xpath.h" />
+		<Unit filename="libxml/include/libxml/xpathInternals.h" />
+		<Unit filename="libxml/include/libxml/xpointer.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="manifest.xml" />
 		<Unit filename="resource.h" />
@@ -55,7 +110,9 @@
 		<Unit filename="uutil.h" />
 		<Unit filename="version.h" />
 		<Extensions>
-			<code_completion />
+			<code_completion>
+				<search_path add="libxml\include" />
+			</code_completion>
 			<envvars />
 			<debugger />
 			<lib_finder disable_auto="1" />
