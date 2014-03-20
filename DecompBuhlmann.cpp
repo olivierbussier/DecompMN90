@@ -57,4 +57,5 @@ int CalcSaturationBuhl(double po,double ProfDepart,double ProfArrivee,int Temps/
 
   for (i=0;i<17;i++)
     pcf[i] = pio+R*(Temps-(1.0/k[i]))+(pio-po-R/k[i])*(1-exp(-k[i]*Temps));
+  return (int)pcf[1];//Warning
 }

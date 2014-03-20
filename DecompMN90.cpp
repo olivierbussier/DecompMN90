@@ -311,17 +311,25 @@ int CalcSaturation(double ProfDepart,double ProfArrivee,int Temps/*, std::list<t
   double PasV;
   int    PasT = PAS_T;
   int i,prf;
-  double ProfActuelle = ProfDepart;
-  double ProfFinale   = ProfDepart+PasV;
+  double ProfActuelle;
+  double ProfFinale;
   double TempsPalier;
-  tCaract tmp=DiveParms.back();
+  tCaract tmp;
+
+  tmp = DiveParms.back();  // Récup des derniers éléments de saturation
 
   // Le principe est de vérifier a chaque pas qu'il y a
   // ou pas un palier a faire a ce niveau
   // --------------------------------------------------
 
-  if (Temps>0)
+  if (Temps>0) {
     PasV = ((ProfArrivee-ProfDepart)/Temps)*PAS_T;  // Le pas est la distance parcourue en 1s
+    ProfActuelle = ProfDepart;
+    ProfFinale = ProfDepart+PasV;
+  } else {
+    tmp.Profondeur=ProfArrivee;
+    DiveParms.push_back(tmp);
+  }
 
   while (Duree<Temps) {
 
